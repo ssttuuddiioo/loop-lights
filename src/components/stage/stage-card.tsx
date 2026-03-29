@@ -122,7 +122,7 @@ export const StageCard = memo(function StageCard({ stage, stageIndex }: StageCar
               width: '100%',
             }}
           >
-            Vars
+            Parameters
           </button>
 
           {/* Inline param panel */}
