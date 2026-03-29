@@ -3,6 +3,7 @@ import { memo } from 'preact/compat';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageMedia } from '../../api/stages';
 import { buildThumbnailUrl } from '../../api/media';
+import { baseUrl } from '../../api/client';
 import type { StageState } from '../../types/stage';
 
 interface MediaSectionProps {
@@ -31,17 +32,32 @@ export const MediaSection = memo(function MediaSection({ stage, stageIndex, onOp
       <div style={{ fontSize: '9px', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--app-muted)', marginBottom: '5px' }}>
         Media
       </div>
-      {/* Thumbnail preview */}
+      {/* Live preview / thumbnail */}
       <div
         onClick={onOpenModal}
         style={{
           width: '100%', height: '56px', borderRadius: '8px',
           border: '1px solid var(--app-border)', background: 'var(--app-surface3)',
-          backgroundImage: thumbUrl ? `url('${thumbUrl}')` : 'none',
-          backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
           marginBottom: '6px', position: 'relative', overflow: 'hidden', cursor: 'pointer',
         }}
       >
+        {stage.mediaId ? (
+          <img
+            key={`monitor-${stage.mediaId}`}
+            src={baseUrl(`media/slots/${stage.mediaId}/monitor?width=200&height=112&fps=8`)}
+            alt={mediaName}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover', display: 'block',
+            }}
+          />
+        ) : (
+          <div style={{
+            width: '100%', height: '100%',
+            backgroundImage: thumbUrl ? `url('${thumbUrl}')` : 'none',
+            backgroundSize: 'cover', backgroundPosition: 'center',
+          }} />
+        )}
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0, padding: '4px 6px',
           fontSize: '9px', color: 'var(--app-text)',

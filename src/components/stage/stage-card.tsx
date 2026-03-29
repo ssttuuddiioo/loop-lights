@@ -1,9 +1,10 @@
-import { useCallback } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { memo } from 'preact/compat';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { VerticalFader } from '../controls/vertical-fader';
 import { ColorSection } from './color-section';
 import { MediaSection } from './media-section';
+import { InlineParams } from './inline-params';
 import type { StageState } from '../../types/stage';
 
 interface StageCardProps {
@@ -14,10 +15,12 @@ interface StageCardProps {
 export const StageCard = memo(function StageCard({ stage, stageIndex }: StageCardProps) {
   const { masterLevel, blackout } = useAppState();
   const dispatch = useAppDispatch();
+  const [varsOpen, setVarsOpen] = useState(false);
 
   const effectiveIntensity = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
   const intensityFraction = effectiveIntensity / 100;
   const isLit = effectiveIntensity > 0;
+  const hasMedia = !!stage.mediaId;
 
   const openColorModal = useCallback(() => {
     dispatch({ type: 'OPEN_COLOR_MODAL', index: stageIndex });
@@ -91,6 +94,40 @@ export const StageCard = memo(function StageCard({ stage, stageIndex }: StageCar
 
       {/* Media */}
       <MediaSection stage={stage} stageIndex={stageIndex} onOpenModal={openMediaModal} />
+
+      {/* Vars toggle button */}
+      {hasMedia && (
+        <>
+          <button
+            onClick={() => setVarsOpen(v => !v)}
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '10px',
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              padding: '4px 12px',
+              borderRadius: 'var(--app-radius-sm)',
+              border: `1px solid ${varsOpen ? 'var(--app-text)' : 'var(--app-border2)'}`,
+              background: varsOpen ? 'var(--app-text)' : 'transparent',
+              color: varsOpen ? 'var(--app-bg)' : 'var(--app-muted)',
+              cursor: 'pointer',
+              transition: 'all 0.1s',
+              width: '100%',
+            }}
+          >
+            Vars
+          </button>
+
+          {/* Inline param panel */}
+          {varsOpen && (
+            <>
+              <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
+              <InlineParams slotId={stage.mediaId} />
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 });

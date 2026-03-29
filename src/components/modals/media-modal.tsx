@@ -1,13 +1,21 @@
-import { useCallback } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageMedia } from '../../api/stages';
 import { buildThumbnailUrl } from '../../api/media';
-import { getZoneSlots, getZoneSlotRange } from '../../lib/slot-allocation';
 import '@material/web/button/outlined-button.js';
+
+type MediaFilter = 'all' | 'effects' | 'video';
+
+const VIDEO_EXTS = /\.(mp4|mov|avi|gif|png|jpg|jpeg|webm|webp)$/i;
+
+function isVideoSlot(name: string): boolean {
+  return VIDEO_EXTS.test(name);
+}
 
 export function MediaModal() {
   const { stages, mediaSlots, mediaModalStageIndex } = useAppState();
   const dispatch = useAppDispatch();
+  const [filter, setFilter] = useState<MediaFilter>('all');
 
   const isOpen = mediaModalStageIndex !== null;
   const stage = mediaModalStageIndex !== null ? stages[mediaModalStageIndex] : null;
@@ -32,14 +40,6 @@ export function MediaModal() {
 
   if (!isOpen || !stage) return null;
 
-  // Filter to zone's dedicated slot range
-  const zoneSlots = mediaModalStageIndex !== null
-    ? getZoneSlots(mediaSlots, mediaModalStageIndex)
-    : mediaSlots;
-  const slotRange = mediaModalStageIndex !== null
-    ? getZoneSlotRange(mediaModalStageIndex)
-    : null;
-
   return (
     <div
       onClick={onBackdropClick}
@@ -59,11 +59,33 @@ export function MediaModal() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700 }}>
             Select Media — {stage.name}
-            {slotRange && <span style={{ fontSize: '12px', color: 'var(--app-muted)', marginLeft: '8px' }}>
-              (Slots {slotRange.start}–{slotRange.end})
-            </span>}
           </span>
           <md-outlined-button onClick={close}>Close</md-outlined-button>
+        </div>
+
+        {/* Filter tabs */}
+        <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: '12px' }}>
+          {(['all', 'effects', 'video'] as MediaFilter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '12px',
+                fontWeight: 500,
+                padding: '5px 12px',
+                borderRadius: 'var(--app-radius-sm)',
+                border: `1px solid ${filter === f ? 'var(--app-text)' : 'var(--app-border2)'}`,
+                background: filter === f ? 'var(--app-text)' : 'transparent',
+                color: filter === f ? 'var(--app-bg)' : 'var(--app-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.1s',
+                textTransform: 'capitalize',
+              }}
+            >
+              {f}
+            </button>
+          ))}
         </div>
 
         {/* Grid */}
@@ -75,7 +97,11 @@ export function MediaModal() {
             selected={!stage.mediaId}
             onClick={() => choose('')}
           />
-          {zoneSlots.map(slot => (
+          {mediaSlots.filter(slot => {
+            if (filter === 'all') return true;
+            if (filter === 'video') return isVideoSlot(slot.name);
+            return !isVideoSlot(slot.name); // effects
+          }).map(slot => (
             <MediaTile
               key={slot.id}
               name={`${slot.id} · ${slot.name}`}
