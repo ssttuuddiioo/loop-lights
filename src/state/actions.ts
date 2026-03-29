@@ -31,6 +31,10 @@ export const OPEN_MEDIA_MODAL = 'OPEN_MEDIA_MODAL' as const;
 export const CLOSE_MEDIA_MODAL = 'CLOSE_MEDIA_MODAL' as const;
 export const SET_USER_TOUCHING = 'SET_USER_TOUCHING' as const;
 
+// Shader preview
+export const OPEN_SHADER_PREVIEW = 'OPEN_SHADER_PREVIEW' as const;
+export const CLOSE_SHADER_PREVIEW = 'CLOSE_SHADER_PREVIEW' as const;
+
 // Overview actions
 export const SET_HUE_SHIFT = 'SET_HUE_SHIFT' as const;
 export const SET_SPEED = 'SET_SPEED' as const;
@@ -63,4 +67,6 @@ export type AppAction =
   | { type: typeof SET_SPEED; value: number }
   | { type: typeof SET_SHADER_PARAM; key: string; value: number }
   | { type: typeof SET_ALL_MEDIA; mediaId: string | number }
-  | { type: typeof TOGGLE_ZONE; index: number };
+  | { type: typeof TOGGLE_ZONE; index: number }
+  | { type: typeof OPEN_SHADER_PREVIEW; slotId: string | number }
+  | { type: typeof CLOSE_SHADER_PREVIEW };

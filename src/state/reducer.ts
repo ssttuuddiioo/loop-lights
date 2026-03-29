@@ -27,6 +27,7 @@ export interface AppState {
   currentBank: number;
   colorModalStageIndex: number | null;
   mediaModalStageIndex: number | null;
+  shaderPreviewSlotId: string | number | null;
   userTouching: boolean;
 
   // Overview
@@ -55,6 +56,7 @@ export const initialState: AppState = {
   currentBank: 0,
   colorModalStageIndex: null,
   mediaModalStageIndex: null,
+  shaderPreviewSlotId: null,
   userTouching: false,
 
   hueShift: 0,
@@ -160,6 +162,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'CLOSE_MEDIA_MODAL':
       return { ...state, mediaModalStageIndex: null };
+
+    case 'OPEN_SHADER_PREVIEW':
+      return { ...state, shaderPreviewSlotId: action.slotId };
+
+    case 'CLOSE_SHADER_PREVIEW':
+      return { ...state, shaderPreviewSlotId: null };
 
     case 'SET_USER_TOUCHING':
       return { ...state, userTouching: action.touching };

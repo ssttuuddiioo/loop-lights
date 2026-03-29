@@ -20,3 +20,9 @@ export async function elmPost(route: string): Promise<Response> {
   if (!response.ok) throw new Error(`POST ${route} failed: ${response.status}`);
   return response;
 }
+
+export async function elmPostFormData(route: string, formData: FormData): Promise<Response> {
+  const response = await fetch(baseUrl(route), { method: 'POST', body: formData });
+  if (!response.ok) throw new Error(`POST ${route} failed: ${response.status}`);
+  return response;
+}

@@ -4,6 +4,7 @@ import { ControlSurface } from './pages/control-surface';
 import { Overview } from './pages/overview';
 import { ColorModal } from './components/modals/color-modal';
 import { MediaModal } from './components/modals/media-modal';
+import { ShaderPreviewModal } from './components/modals/shader-preview-modal';
 
 function AppContent() {
   const { activePage } = useAppState();
@@ -13,6 +14,7 @@ function AppContent() {
       {activePage === 'control' ? <ControlSurface /> : <Overview />}
       <ColorModal />
       <MediaModal />
+      <ShaderPreviewModal />
     </PageShell>
   );
 }

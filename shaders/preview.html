@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Shader Preview — Gradient Ramp</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; color: #eee; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
+  canvas { display: block; width: 100vw; height: 70vh; }
+  .controls {
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px 32px;
+  }
+  .control { display: flex; flex-direction: column; gap: 4px; }
+  .control label { display: flex; justify-content: space-between; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .control label span { color: #e8ff47; font-size: 13px; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px;
+    background: #222; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: #e8ff47; cursor: pointer;
+  }
+  input[type=color] { width: 48px; height: 32px; border: 1px solid #333; border-radius: 6px; background: none; cursor: pointer; }
+  .color-row { display: flex; align-items: center; gap: 12px; }
+  .color-row label { flex: 1; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #555; padding: 16px 24px 0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<h2>ELM Parameter Preview</h2>
+<div class="controls">
+  <div class="control">
+    <label>Force (Tiles) <span id="v-force">1</span></label>
+    <input type="range" id="force" min="1" max="10" step="0.1" value="1">
+  </div>
+  <div class="control">
+    <label>Hue (Color 2) <span id="v-hue">0</span></label>
+    <input type="range" id="hue" min="0" max="360" step="1" value="240">
+  </div>
+  <div class="control">
+    <label>Speed-Ex <span id="v-speed">1</span></label>
+    <input type="range" id="speed" min="-5" max="5" step="0.1" value="1">
+  </div>
+  <div class="control color-row">
+    <label>Stage RGB (Color 1)</label>
+    <input type="color" id="stageColor" value="#ff0000">
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+
+// --- Shader source (matches gradient-ramp.frag) ---
+const fragSrc = `
+precision highp float;
+uniform float iTime;
+uniform vec2 iResolution;
+uniform float iForce;
+uniform float iHue;
+uniform float iSpeedEx;
+uniform vec3 iStageRGB;
+
+vec3 hsv2rgb(float h, float s, float v) {
+    vec3 c = vec3(h, s, v);
+    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+    return c.z * mix(vec3(1.0), rgb, c.y);
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+    float tiles = max(iForce, 1.0);
+    float speed = iSpeedEx * 0.15;
+    float hue2  = iHue / 360.0;
+
+    float t = fract(uv.y * tiles - iTime * speed);
+
+    vec3 color1 = vec3(1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    vec3 col = mix(color1, color2, t);
+
+    // Apply stage RGB tint (simulates ELM's color multiply)
+    col *= iStageRGB;
+
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const vertSrc = `
+attribute vec2 pos;
+void main() { gl_Position = vec4(pos, 0.0, 1.0); }
+`;
+
+function compile(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, vertSrc));
+gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, fragSrc));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+// Fullscreen quad
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const posLoc = gl.getAttribLocation(prog, 'pos');
+gl.enableVertexAttribArray(posLoc);
+gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+// Uniform locations
+const uTime = gl.getUniformLocation(prog, 'iTime');
+const uRes = gl.getUniformLocation(prog, 'iResolution');
+const uForce = gl.getUniformLocation(prog, 'iForce');
+const uHue = gl.getUniformLocation(prog, 'iHue');
+const uSpeed = gl.getUniformLocation(prog, 'iSpeedEx');
+const uRGB = gl.getUniformLocation(prog, 'iStageRGB');
+
+// Controls
+const elForce = document.getElementById('force');
+const elHue = document.getElementById('hue');
+const elSpeed = document.getElementById('speed');
+const elColor = document.getElementById('stageColor');
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function resize() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const start = performance.now();
+function frame() {
+  const t = (performance.now() - start) / 1000;
+  const rgb = hexToRgb(elColor.value);
+
+  gl.uniform1f(uTime, t);
+  gl.uniform2f(uRes, canvas.width, canvas.height);
+  gl.uniform1f(uForce, parseFloat(elForce.value));
+  gl.uniform1f(uHue, parseFloat(elHue.value));
+  gl.uniform1f(uSpeed, parseFloat(elSpeed.value));
+  gl.uniform3f(uRGB, rgb[0], rgb[1], rgb[2]);
+
+  // Update readouts
+  document.getElementById('v-force').textContent = parseFloat(elForce.value).toFixed(1);
+  document.getElementById('v-hue').textContent = Math.round(elHue.value) + '\u00B0';
+  document.getElementById('v-speed').textContent = parseFloat(elSpeed.value).toFixed(1);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
