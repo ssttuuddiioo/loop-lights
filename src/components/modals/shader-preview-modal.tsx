@@ -10,9 +10,8 @@ precision highp float;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform float iForce;
-uniform float iHue;
-uniform float iSpeedEx;
-uniform vec3 iStageRGB;
+uniform float iForce2;
+uniform float iComplexity;
 
 vec3 hsv2rgb(float h, float s, float v) {
     vec3 c = vec3(h, s, v);
@@ -22,14 +21,13 @@ vec3 hsv2rgb(float h, float s, float v) {
 
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    float tiles = max(iForce, 1.0);
-    float speed = iSpeedEx * 0.15;
-    float hue2  = iHue / 360.0;
-    float t = fract(uv.y * tiles - iTime * speed);
-    vec3 color1 = vec3(1.0);
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
     vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float tiles = max(iComplexity, 1.0);
+    float t = fract(uv.y * tiles - iTime * 0.2);
     vec3 col = mix(color1, color2, t);
-    col *= iStageRGB;
     gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -55,16 +53,11 @@ function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
   return s;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const n = parseInt(hex.slice(1), 16);
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-}
-
 // The ELM parameter names that our shader uses
 const PARAM_MAP: Record<string, string> = {
   'media-param-force': 'iForce',
-  'media-param-hue': 'iHue',
-  'media-param-speed-ex': 'iSpeedEx',
+  'media-param-force-2': 'iForce2',
+  'media-param-complexity': 'iComplexity',
 };
 
 export function ShaderPreviewModal() {
@@ -79,7 +72,6 @@ export function ShaderPreviewModal() {
 
   const [params, setParams] = useState<MediaParameter[]>([]);
   const [paramValues, setParamValues] = useState<Record<string, number>>({});
-  const [stageColor, setStageColor] = useState('#ff0000');
 
   const isOpen = shaderPreviewSlotId !== null;
   const slot = mediaSlots.find(s => String(s.id) === String(shaderPreviewSlotId));
@@ -154,14 +146,12 @@ export function ShaderPreviewModal() {
       if (!gl || !prog) return;
 
       const t = (performance.now() - startRef.current) / 1000;
-      const rgb = hexToRgb(stageColor);
 
       gl.uniform1f(gl.getUniformLocation(prog, 'iTime'), t);
       gl.uniform2f(gl.getUniformLocation(prog, 'iResolution'), gl.canvas.width, gl.canvas.height);
       gl.uniform1f(gl.getUniformLocation(prog, 'iForce'), paramValues['media-param-force'] ?? 1);
-      gl.uniform1f(gl.getUniformLocation(prog, 'iHue'), paramValues['media-param-hue'] ?? 0);
-      gl.uniform1f(gl.getUniformLocation(prog, 'iSpeedEx'), paramValues['media-param-speed-ex'] ?? 1);
-      gl.uniform3f(gl.getUniformLocation(prog, 'iStageRGB'), rgb[0], rgb[1], rgb[2]);
+      gl.uniform1f(gl.getUniformLocation(prog, 'iForce2'), paramValues['media-param-force-2'] ?? 5);
+      gl.uniform1f(gl.getUniformLocation(prog, 'iComplexity'), paramValues['media-param-complexity'] ?? 1);
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       rafRef.current = requestAnimationFrame(frame);
@@ -169,7 +159,7 @@ export function ShaderPreviewModal() {
 
     rafRef.current = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isOpen, fragSrc, paramValues, stageColor]);
+  }, [isOpen, fragSrc, paramValues]);
 
   const updateParam = useCallback((paramId: string, displayName: string, value: number) => {
     setParamValues(prev => ({ ...prev, [paramId]: value }));
@@ -239,17 +229,6 @@ export function ShaderPreviewModal() {
 
         {/* Parameter Sliders */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {/* Stage Color picker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={labelStyle}>Stage RGB</span>
-            <input
-              type="color"
-              value={stageColor}
-              onInput={(e) => setStageColor((e.target as HTMLInputElement).value)}
-              style={{ width: '48px', height: '32px', border: '1px solid var(--app-border2)', borderRadius: '6px', background: 'none', cursor: 'pointer' }}
-            />
-          </div>
-
           {/* ELM parameters */}
           {tuneableParams.map(param => (
             <div key={param.name.id}>

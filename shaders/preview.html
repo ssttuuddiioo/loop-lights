@@ -24,9 +24,6 @@
     -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
     background: #e8ff47; cursor: pointer;
   }
-  input[type=color] { width: 48px; height: 32px; border: 1px solid #333; border-radius: 6px; background: none; cursor: pointer; }
-  .color-row { display: flex; align-items: center; gap: 12px; }
-  .color-row label { flex: 1; }
   h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #555; padding: 16px 24px 0; }
 </style>
 </head>
@@ -35,20 +32,20 @@
 <h2>ELM Parameter Preview</h2>
 <div class="controls">
   <div class="control">
-    <label>Force (Tiles) <span id="v-force">1</span></label>
+    <label>Force — Color 1 Hue <span id="v-force">1</span></label>
     <input type="range" id="force" min="1" max="10" step="0.1" value="1">
   </div>
   <div class="control">
-    <label>Hue (Color 2) <span id="v-hue">0</span></label>
-    <input type="range" id="hue" min="0" max="360" step="1" value="240">
+    <label>Force 2 — Color 2 Hue <span id="v-force2">5</span></label>
+    <input type="range" id="force2" min="1" max="10" step="0.1" value="5">
   </div>
   <div class="control">
-    <label>Speed-Ex <span id="v-speed">1</span></label>
-    <input type="range" id="speed" min="-5" max="5" step="0.1" value="1">
+    <label>Complexity — Tiles <span id="v-complexity">1</span></label>
+    <input type="range" id="complexity" min="1" max="20" step="1" value="1">
   </div>
-  <div class="control color-row">
-    <label>Stage RGB (Color 1)</label>
-    <input type="color" id="stageColor" value="#ff0000">
+  <div class="control">
+    <label>Speed <span id="v-speed">1</span></label>
+    <input type="range" id="speed" min="0" max="2" step="0.05" value="1">
   </div>
 </div>
 
@@ -56,15 +53,13 @@
 const canvas = document.getElementById('c');
 const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
 
-// --- Shader source (matches gradient-ramp.frag) ---
 const fragSrc = `
 precision highp float;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform float iForce;
-uniform float iHue;
-uniform float iSpeedEx;
-uniform vec3 iStageRGB;
+uniform float iForce2;
+uniform float iComplexity;
 
 vec3 hsv2rgb(float h, float s, float v) {
     vec3 c = vec3(h, s, v);
@@ -74,28 +69,18 @@ vec3 hsv2rgb(float h, float s, float v) {
 
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
-
-    float tiles = max(iForce, 1.0);
-    float speed = iSpeedEx * 0.15;
-    float hue2  = iHue / 360.0;
-
-    float t = fract(uv.y * tiles - iTime * speed);
-
-    vec3 color1 = vec3(1.0);
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
     vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float tiles = max(iComplexity, 1.0);
+    float t = fract(uv.y * tiles - iTime * 0.2);
     vec3 col = mix(color1, color2, t);
-
-    // Apply stage RGB tint (simulates ELM's color multiply)
-    col *= iStageRGB;
-
     gl_FragColor = vec4(col, 1.0);
 }
 `;
 
-const vertSrc = `
-attribute vec2 pos;
-void main() { gl_Position = vec4(pos, 0.0, 1.0); }
-`;
+const vertSrc = `attribute vec2 pos; void main() { gl_Position = vec4(pos, 0.0, 1.0); }`;
 
 function compile(gl, type, src) {
   const s = gl.createShader(type);
@@ -114,7 +99,6 @@ gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, fragSrc));
 gl.linkProgram(prog);
 gl.useProgram(prog);
 
-// Fullscreen quad
 const buf = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
@@ -122,24 +106,16 @@ const posLoc = gl.getAttribLocation(prog, 'pos');
 gl.enableVertexAttribArray(posLoc);
 gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-// Uniform locations
 const uTime = gl.getUniformLocation(prog, 'iTime');
 const uRes = gl.getUniformLocation(prog, 'iResolution');
 const uForce = gl.getUniformLocation(prog, 'iForce');
-const uHue = gl.getUniformLocation(prog, 'iHue');
-const uSpeed = gl.getUniformLocation(prog, 'iSpeedEx');
-const uRGB = gl.getUniformLocation(prog, 'iStageRGB');
+const uForce2 = gl.getUniformLocation(prog, 'iForce2');
+const uComplexity = gl.getUniformLocation(prog, 'iComplexity');
 
-// Controls
 const elForce = document.getElementById('force');
-const elHue = document.getElementById('hue');
+const elForce2 = document.getElementById('force2');
+const elComplexity = document.getElementById('complexity');
 const elSpeed = document.getElementById('speed');
-const elColor = document.getElementById('stageColor');
-
-function hexToRgb(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-}
 
 function resize() {
   canvas.width = canvas.clientWidth * devicePixelRatio;
@@ -151,20 +127,19 @@ resize();
 
 const start = performance.now();
 function frame() {
-  const t = (performance.now() - start) / 1000;
-  const rgb = hexToRgb(elColor.value);
+  const speedVal = parseFloat(elSpeed.value);
+  const t = (performance.now() - start) / 1000 * speedVal;
 
   gl.uniform1f(uTime, t);
   gl.uniform2f(uRes, canvas.width, canvas.height);
   gl.uniform1f(uForce, parseFloat(elForce.value));
-  gl.uniform1f(uHue, parseFloat(elHue.value));
-  gl.uniform1f(uSpeed, parseFloat(elSpeed.value));
-  gl.uniform3f(uRGB, rgb[0], rgb[1], rgb[2]);
+  gl.uniform1f(uForce2, parseFloat(elForce2.value));
+  gl.uniform1f(uComplexity, parseFloat(elComplexity.value));
 
-  // Update readouts
   document.getElementById('v-force').textContent = parseFloat(elForce.value).toFixed(1);
-  document.getElementById('v-hue').textContent = Math.round(elHue.value) + '\u00B0';
-  document.getElementById('v-speed').textContent = parseFloat(elSpeed.value).toFixed(1);
+  document.getElementById('v-force2').textContent = parseFloat(elForce2.value).toFixed(1);
+  document.getElementById('v-complexity').textContent = elComplexity.value;
+  document.getElementById('v-speed').textContent = parseFloat(elSpeed.value).toFixed(2);
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   requestAnimationFrame(frame);
