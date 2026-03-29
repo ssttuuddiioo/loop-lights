@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'preact/hooks';
+import { useCallback } from 'preact/hooks';
 import { memo } from 'preact/compat';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { VerticalFader } from '../controls/vertical-fader';
@@ -13,14 +13,14 @@ interface StageCardProps {
 }
 
 export const StageCard = memo(function StageCard({ stage, stageIndex }: StageCardProps) {
-  const { masterLevel, blackout } = useAppState();
+  const { masterLevel, blackout, paramPanelZoneIndex } = useAppState();
   const dispatch = useAppDispatch();
-  const [varsOpen, setVarsOpen] = useState(false);
 
   const effectiveIntensity = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
   const intensityFraction = effectiveIntensity / 100;
   const isLit = effectiveIntensity > 0;
   const hasMedia = !!stage.mediaId;
+  const varsOpen = paramPanelZoneIndex === stageIndex;
 
   const openColorModal = useCallback(() => {
     dispatch({ type: 'OPEN_COLOR_MODAL', index: stageIndex });
@@ -99,7 +99,13 @@ export const StageCard = memo(function StageCard({ stage, stageIndex }: StageCar
       {hasMedia && (
         <>
           <button
-            onClick={() => setVarsOpen(v => !v)}
+            onClick={() => {
+              if (varsOpen) {
+                dispatch({ type: 'CLOSE_PARAM_PANEL' });
+              } else {
+                dispatch({ type: 'OPEN_PARAM_PANEL', slotId: stage.mediaId, zoneIndex: stageIndex });
+              }
+            }}
             style={{
               fontFamily: 'var(--font-sans)',
               fontSize: '10px',
