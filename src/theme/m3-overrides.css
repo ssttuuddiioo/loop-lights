@@ -1,0 +1,63 @@
+/* M3 component theming to match stage controller dark aesthetic */
+
+md-filled-button {
+  --md-filled-button-label-text-font: var(--font-mono);
+  --md-filled-button-label-text-size: 11px;
+  --md-filled-button-container-shape: var(--app-radius-sm);
+}
+
+md-outlined-button {
+  --md-outlined-button-label-text-font: var(--font-mono);
+  --md-outlined-button-label-text-size: 11px;
+  --md-outlined-button-container-shape: var(--app-radius-sm);
+  --md-outlined-button-outline-color: var(--app-border2);
+}
+
+md-filled-tonal-button {
+  --md-filled-tonal-button-label-text-font: var(--font-mono);
+  --md-filled-tonal-button-label-text-size: 11px;
+  --md-filled-tonal-button-container-shape: var(--app-radius-sm);
+  --md-filled-tonal-button-container-color: var(--app-surface2);
+  --md-filled-tonal-button-label-text-color: var(--app-text);
+}
+
+md-tabs {
+  --md-primary-tab-label-text-font: var(--font-mono);
+  --md-primary-tab-label-text-size: 11px;
+  --md-primary-tab-active-indicator-color: var(--app-accent);
+  --md-primary-tab-label-text-color: var(--app-muted);
+  --md-primary-tab-active-label-text-color: var(--app-text);
+  --md-primary-tab-container-color: transparent;
+}
+
+md-switch {
+  --md-switch-selected-track-color: var(--app-accent);
+  --md-switch-selected-handle-color: var(--app-bg);
+  --md-switch-unselected-track-color: var(--app-surface3);
+  --md-switch-unselected-handle-color: var(--app-muted);
+}
+
+md-slider {
+  --md-slider-active-track-color: var(--app-accent);
+  --md-slider-handle-color: var(--app-accent);
+  --md-slider-inactive-track-color: var(--app-border2);
+  --md-slider-active-track-shape: 999px;
+  --md-slider-inactive-track-shape: 999px;
+  --md-slider-handle-shape: 50%;
+}
+
+md-dialog {
+  --md-dialog-container-color: var(--app-surface);
+  --md-dialog-headline-font: var(--font-display);
+  --md-dialog-supporting-text-font: var(--font-mono);
+  --md-dialog-container-shape: 16px;
+}
+
+md-assist-chip {
+  --md-assist-chip-label-text-font: var(--font-mono);
+  --md-assist-chip-label-text-size: 10px;
+  --md-assist-chip-container-shape: 20px;
+  --md-assist-chip-outline-color: var(--app-border2);
+  --md-assist-chip-label-text-color: var(--app-muted);
+  --md-assist-chip-container-height: 24px;
+}

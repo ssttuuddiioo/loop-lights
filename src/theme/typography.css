@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --font-mono: 'DM Mono', monospace;
+  --font-display: 'Syne', sans-serif;
+
+  --md-sys-typescale-body-medium-font: var(--font-mono);
+  --md-sys-typescale-body-large-font: var(--font-mono);
+  --md-sys-typescale-body-small-font: var(--font-mono);
+  --md-sys-typescale-label-medium-font: var(--font-mono);
+  --md-sys-typescale-label-large-font: var(--font-mono);
+  --md-sys-typescale-label-small-font: var(--font-mono);
+  --md-sys-typescale-title-medium-font: var(--font-display);
+  --md-sys-typescale-title-large-font: var(--font-display);
+  --md-sys-typescale-headline-medium-font: var(--font-display);
+}

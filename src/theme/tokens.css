@@ -1,0 +1,59 @@
+:root {
+  /* Surface colors */
+  --md-sys-color-surface: #0a0a0b;
+  --md-sys-color-surface-container-lowest: #0a0a0b;
+  --md-sys-color-surface-container-low: #0e0e11;
+  --md-sys-color-surface-container: #111114;
+  --md-sys-color-surface-container-high: #18181c;
+  --md-sys-color-surface-container-highest: #1e1e24;
+  --md-sys-color-surface-dim: #0a0a0b;
+  --md-sys-color-surface-bright: #1e1e24;
+  --md-sys-color-surface-tint: #e8ff47;
+
+  /* On-surface */
+  --md-sys-color-on-surface: #f0f0ef;
+  --md-sys-color-on-surface-variant: rgba(240, 240, 239, 0.4);
+
+  /* Primary */
+  --md-sys-color-primary: #e8ff47;
+  --md-sys-color-on-primary: #0a0a0b;
+  --md-sys-color-primary-container: rgba(232, 255, 71, 0.12);
+  --md-sys-color-on-primary-container: #e8ff47;
+
+  /* Error / Danger */
+  --md-sys-color-error: #ff4d4d;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: rgba(255, 77, 77, 0.12);
+  --md-sys-color-on-error-container: #ff4d4d;
+
+  /* Outline */
+  --md-sys-color-outline: rgba(255, 255, 255, 0.12);
+  --md-sys-color-outline-variant: rgba(255, 255, 255, 0.07);
+
+  /* Inverse */
+  --md-sys-color-inverse-surface: #f0f0ef;
+  --md-sys-color-inverse-on-surface: #0a0a0b;
+  --md-sys-color-inverse-primary: #3a4000;
+
+  /* Secondary */
+  --md-sys-color-secondary: #aaaaaa;
+  --md-sys-color-on-secondary: #0a0a0b;
+  --md-sys-color-secondary-container: #18181c;
+  --md-sys-color-on-secondary-container: #f0f0ef;
+
+  /* App-specific tokens (non-M3) */
+  --app-bg: #0a0a0b;
+  --app-surface: #111114;
+  --app-surface2: #18181c;
+  --app-surface3: #1e1e24;
+  --app-border: rgba(255, 255, 255, 0.07);
+  --app-border2: rgba(255, 255, 255, 0.12);
+  --app-text: #f0f0ef;
+  --app-muted: rgba(240, 240, 239, 0.4);
+  --app-faint: rgba(240, 240, 239, 0.15);
+  --app-accent: #e8ff47;
+  --app-accent-dim: rgba(232, 255, 71, 0.12);
+  --app-danger: #ff4d4d;
+  --app-radius: 12px;
+  --app-radius-sm: 7px;
+}
