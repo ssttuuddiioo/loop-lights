@@ -29,7 +29,7 @@ export function MasterFader() {
         Master
       </span>
       <div
-        class="no-select"
+        class="no-select master-track"
         role="slider"
         aria-valuemin={0}
         aria-valuemax={100}

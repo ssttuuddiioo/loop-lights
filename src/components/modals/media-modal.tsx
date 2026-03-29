@@ -41,7 +41,7 @@ export function MediaModal() {
         zIndex: 9999, padding: '20px',
       }}
     >
-      <div style={{
+      <div class="media-modal-panel" style={{
         width: 'min(980px, 96vw)', maxHeight: '88vh', overflow: 'auto',
         background: 'var(--app-surface)', border: '1px solid var(--app-border2)',
         borderRadius: '16px', padding: '16px',
@@ -55,7 +55,7 @@ export function MediaModal() {
         </div>
 
         {/* Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
+        <div class="media-modal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
           {/* None tile */}
           <MediaTile
             name="None"

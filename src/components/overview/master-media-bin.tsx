@@ -25,7 +25,7 @@ export function MasterMediaBin() {
       }}>
         Master Media Bin
       </div>
-      <div style={{
+      <div class="media-bin-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
         gap: '8px',

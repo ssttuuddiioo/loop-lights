@@ -54,7 +54,7 @@ export const VerticalFader = memo(function VerticalFader({ stage, stageIndex, ef
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
       <div
-        class="no-select"
+        class="no-select fader-wrap"
         style={{
           position: 'relative',
           width: '36px',

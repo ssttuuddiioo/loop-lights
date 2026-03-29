@@ -28,6 +28,7 @@ export function StageGrid() {
 
   return (
     <div
+      class="stage-grid"
       style={{
         padding: '24px 28px 40px',
         display: 'grid',

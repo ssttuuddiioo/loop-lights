@@ -29,6 +29,7 @@ export const StageCard = memo(function StageCard({ stage, stageIndex }: StageCar
 
   return (
     <div
+      class="stage-card"
       style={{
         background: 'var(--app-surface)',
         border: `1px solid ${isLit ? 'rgba(255,255,255,0.14)' : 'var(--app-border)'}`,

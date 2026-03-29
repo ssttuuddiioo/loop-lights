@@ -11,7 +11,7 @@ export const ColorSwatch = memo(function ColorSwatch({ color, selected, onClick,
   return (
     <div
       onClick={onClick}
-      class="no-select"
+      class="no-select color-swatch"
       style={{
         width: `${size}px`,
         height: `${size}px`,

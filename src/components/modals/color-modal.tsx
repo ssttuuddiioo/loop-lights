@@ -44,7 +44,7 @@ export function ColorModal() {
         zIndex: 10000, padding: '20px',
       }}
     >
-      <div style={{
+      <div class="color-modal-panel" style={{
         width: 'min(760px, 96vw)', maxHeight: '88vh', overflow: 'auto',
         background: 'var(--app-surface)', border: '1px solid var(--app-border2)',
         borderRadius: '16px', padding: '16px',
@@ -84,7 +84,7 @@ export function ColorModal() {
         />
 
         {/* Quick swatches */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '8px', marginBottom: '12px' }}>
+        <div class="quick-swatches-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '8px', marginBottom: '12px' }}>
           {SWATCHES.map(hex => (
             <div
               key={hex}

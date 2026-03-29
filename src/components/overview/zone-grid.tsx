@@ -5,7 +5,7 @@ export function ZoneGrid() {
   const { stages } = useAppState();
 
   return (
-    <div style={{
+    <div class="zone-grid" style={{
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
       gap: '10px',

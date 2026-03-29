@@ -8,5 +8,5 @@ export function WatchdogPill() {
     '--md-assist-chip-outline-color': watchdogOk ? 'var(--app-border2)' : 'var(--app-danger)',
   };
 
-  return <md-assist-chip label={watchdogText} style={style} />;
+  return <span class="watchdog-pill"><md-assist-chip label={watchdogText} style={style} /></span>;
 }

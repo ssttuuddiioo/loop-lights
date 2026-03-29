@@ -45,6 +45,7 @@ export function BankNav() {
 function OffscreenHint({ side, count, onClick }: { side: 'left' | 'right'; count: number; onClick: () => void }) {
   return (
     <div
+      class="offscreen-hint"
       onClick={onClick}
       style={{
         position: 'fixed',

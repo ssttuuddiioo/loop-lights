@@ -1,0 +1,136 @@
+/* ===== Phone (max-width: 600px) ===== */
+@media (max-width: 600px) {
+  /* Top bar: stack into two rows */
+  .topbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 8px 12px !important;
+    gap: 6px !important;
+  }
+
+  .topbar-left {
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+
+  .topbar-right {
+    flex-wrap: wrap;
+    gap: 8px !important;
+    justify-content: space-between;
+  }
+
+  /* Master fader: fill available width */
+  .master-section {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .master-track {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* Stage grid: 2 columns */
+  .stage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+
+  /* Stage card: tighter padding */
+  .stage-card {
+    padding: 12px 10px 10px !important;
+    gap: 8px !important;
+  }
+
+  /* Vertical fader: shorter on phone */
+  .fader-wrap {
+    height: 120px !important;
+  }
+
+  /* Color swatches: smaller on phone */
+  .color-swatch {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  /* Media modal: 2 columns */
+  .media-modal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Media modal panel: full width */
+  .media-modal-panel {
+    width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Color modal panel: full width */
+  .color-modal-panel {
+    width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Quick swatches in color modal: 4 columns */
+  .quick-swatches-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  /* Overview page: tighter padding */
+  .overview-page {
+    padding: 12px !important;
+  }
+
+  /* Overview zone grid: 1 column on phone */
+  .zone-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Master media bin: 2 columns */
+  .media-bin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Bank navigation offscreen hints */
+  .offscreen-hint {
+    width: 28px !important;
+    height: 48px !important;
+  }
+
+  /* Hide less-important status indicators on phone */
+  .sync-status,
+  .watchdog-pill {
+    display: none !important;
+  }
+}
+
+/* ===== Tablet (601px - 900px) ===== */
+@media (min-width: 601px) and (max-width: 900px) {
+  .stage-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    padding: 16px !important;
+  }
+
+  .topbar {
+    flex-wrap: wrap !important;
+    padding: 8px 16px !important;
+    gap: 8px !important;
+  }
+
+  .media-modal-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .fader-wrap {
+    height: 140px !important;
+  }
+}
+
+/* ===== Large screens (901px+) ===== */
+@media (min-width: 901px) {
+  .stage-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}

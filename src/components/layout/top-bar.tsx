@@ -28,7 +28,7 @@ export function TopBar() {
   }, [dispatch]);
 
   return (
-    <div style={{
+    <div class="topbar" style={{
       position: 'sticky', top: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 28px',
@@ -41,7 +41,7 @@ export function TopBar() {
       gap: '8px',
     }}>
       {/* Left section */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div class="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <span style={{
           fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700,
           letterSpacing: '0.06em', textTransform: 'uppercase' as const,
@@ -60,8 +60,8 @@ export function TopBar() {
       </div>
 
       {/* Right section */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <MasterFader />
+      <div class="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div class="master-section"><MasterFader /></div>
         <BlackoutButton />
         <SyncStatus />
         <WatchdogPill />

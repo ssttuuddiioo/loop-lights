@@ -6,7 +6,7 @@ import { MasterFader } from '../controls/master-fader';
 
 export function OverviewPage() {
   return (
-    <div style={{ padding: '24px 28px 60px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div class="overview-page" style={{ padding: '24px 28px 60px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Master controls row */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
