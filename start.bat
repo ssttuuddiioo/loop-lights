@@ -16,8 +16,15 @@ git pull
 echo.
 timeout /t 3 /nobreak >nul
 
-REM --- Step 2: Deploy shaders to ELM ---
-echo  [2/4] Deploying shaders to ELM...
+REM --- Step 2: Build the app ---
+echo  [2/5] Building the app...
+echo.
+call npm run build
+echo.
+timeout /t 2 /nobreak >nul
+
+REM --- Step 3: Deploy shaders to ELM ---
+echo  [3/5] Deploying shaders to ELM...
 echo.
 set ELM_SHADERS=C:\ProgramData\ELM\shaders
 for %%f in ("%~dp0shaders\*.frag") do (
@@ -32,14 +39,14 @@ echo   Shaders deployed.
 echo.
 timeout /t 2 /nobreak >nul
 
-REM --- Step 3: Start the controller server ---
-echo  [3/4] Starting Stage Controller on port 4200...
+REM --- Step 4: Start the controller server ---
+echo  [4/5] Starting Stage Controller on port 4200...
 echo.
 start "Dimly Server" cmd /c "title Dimly Server && node "%~dp0serve.cjs""
 timeout /t 3 /nobreak >nul
 
-REM --- Step 4: Start Cloudflare Tunnel ---
-echo  [4/4] Starting Cloudflare Tunnel (loop.dimly.app)...
+REM --- Step 5: Start Cloudflare Tunnel ---
+echo  [5/5] Starting Cloudflare Tunnel (loop.dimly.app)...
 echo.
 start "Dimly Tunnel" cmd /c "title Dimly Tunnel && C:\Users\livingwalls\Downloads\cloudflared-windows-amd64 tunnel run dimly"
 timeout /t 5 /nobreak >nul
