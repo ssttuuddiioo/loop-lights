@@ -11,7 +11,7 @@ uniform float iTime;
 uniform vec2 iResolution;
 uniform float iForce;
 uniform float iForce2;
-uniform float iComplexity;
+uniform float iNbItems;
 
 vec3 hsv2rgb(float h, float s, float v) {
     vec3 c = vec3(h, s, v);
@@ -25,7 +25,7 @@ void main() {
     float hue2 = (iForce2 - 1.0) / 9.0;
     vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
     vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
-    float tiles = max(iComplexity, 1.0);
+    float tiles = max(iNbItems, 1.0);
     float t = fract(uv.y * tiles - iTime * 0.2);
     vec3 col = mix(color1, color2, t);
     gl_FragColor = vec4(col, 1.0);
@@ -57,7 +57,7 @@ function compileShader(gl: WebGLRenderingContext, type: number, src: string) {
 const PARAM_MAP: Record<string, string> = {
   'media-param-force': 'iForce',
   'media-param-force-2': 'iForce2',
-  'media-param-complexity': 'iComplexity',
+  'media-param-nb-items': 'iNbItems',
 };
 
 export function ShaderPreviewModal() {
@@ -151,7 +151,7 @@ export function ShaderPreviewModal() {
       gl.uniform2f(gl.getUniformLocation(prog, 'iResolution'), gl.canvas.width, gl.canvas.height);
       gl.uniform1f(gl.getUniformLocation(prog, 'iForce'), paramValues['media-param-force'] ?? 1);
       gl.uniform1f(gl.getUniformLocation(prog, 'iForce2'), paramValues['media-param-force-2'] ?? 5);
-      gl.uniform1f(gl.getUniformLocation(prog, 'iComplexity'), paramValues['media-param-complexity'] ?? 1);
+      gl.uniform1f(gl.getUniformLocation(prog, 'iNbItems'), paramValues['media-param-complexity'] ?? 1);
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       rafRef.current = requestAnimationFrame(frame);
