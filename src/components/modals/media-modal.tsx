@@ -55,7 +55,7 @@ export function MediaModal() {
         </div>
 
         {/* Grid */}
-        <div class="media-modal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
+        <div class="media-modal-grid" style={{ display: 'grid', gap: '10px' }}>
           {/* None tile */}
           <MediaTile
             name="None"

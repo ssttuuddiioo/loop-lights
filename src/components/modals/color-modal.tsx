@@ -84,7 +84,7 @@ export function ColorModal() {
         />
 
         {/* Quick swatches */}
-        <div class="quick-swatches-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '8px', marginBottom: '12px' }}>
+        <div class="quick-swatches-grid" style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
           {SWATCHES.map(hex => (
             <div
               key={hex}

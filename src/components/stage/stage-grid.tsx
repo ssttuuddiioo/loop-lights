@@ -32,7 +32,6 @@ export function StageGrid() {
       style={{
         padding: '24px 28px 40px',
         display: 'grid',
-        gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
         gap: '12px',
         touchAction: 'pan-y',
       }}

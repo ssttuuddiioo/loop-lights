@@ -58,7 +58,6 @@ export const VerticalFader = memo(function VerticalFader({ stage, stageIndex, ef
         style={{
           position: 'relative',
           width: '36px',
-          height: '160px',
           background: 'var(--app-surface3)',
           borderRadius: '18px',
           border: '1px solid var(--app-border)',
