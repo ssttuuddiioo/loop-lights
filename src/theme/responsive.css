@@ -100,16 +100,6 @@
     padding: 12px;
   }
 
-  /* Overview zone grid: 1 column on phone */
-  .zone-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Master media bin: 2 columns */
-  .media-bin-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   /* Bank navigation offscreen hints */
   .offscreen-hint {
     width: 28px;

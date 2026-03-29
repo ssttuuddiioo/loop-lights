@@ -35,6 +35,10 @@ export const SET_USER_TOUCHING = 'SET_USER_TOUCHING' as const;
 export const OPEN_SHADER_PREVIEW = 'OPEN_SHADER_PREVIEW' as const;
 export const CLOSE_SHADER_PREVIEW = 'CLOSE_SHADER_PREVIEW' as const;
 
+// Parameter panel (overview per-zone)
+export const OPEN_PARAM_PANEL = 'OPEN_PARAM_PANEL' as const;
+export const CLOSE_PARAM_PANEL = 'CLOSE_PARAM_PANEL' as const;
+
 // Overview actions
 export const SET_HUE_SHIFT = 'SET_HUE_SHIFT' as const;
 export const SET_SPEED = 'SET_SPEED' as const;
@@ -69,4 +73,6 @@ export type AppAction =
   | { type: typeof SET_ALL_MEDIA; mediaId: string | number }
   | { type: typeof TOGGLE_ZONE; index: number }
   | { type: typeof OPEN_SHADER_PREVIEW; slotId: string | number }
-  | { type: typeof CLOSE_SHADER_PREVIEW };
+  | { type: typeof CLOSE_SHADER_PREVIEW }
+  | { type: typeof OPEN_PARAM_PANEL; slotId: string | number; zoneIndex: number }
+  | { type: typeof CLOSE_PARAM_PANEL };

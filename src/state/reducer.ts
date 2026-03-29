@@ -28,6 +28,8 @@ export interface AppState {
   colorModalStageIndex: number | null;
   mediaModalStageIndex: number | null;
   shaderPreviewSlotId: string | number | null;
+  paramPanelSlotId: string | number | null;
+  paramPanelZoneIndex: number | null;
   userTouching: boolean;
 
   // Overview
@@ -57,6 +59,8 @@ export const initialState: AppState = {
   colorModalStageIndex: null,
   mediaModalStageIndex: null,
   shaderPreviewSlotId: null,
+  paramPanelSlotId: null,
+  paramPanelZoneIndex: null,
   userTouching: false,
 
   hueShift: 0,
@@ -185,6 +189,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       const stages = state.stages.map(s => ({ ...s, mediaId: action.mediaId }));
       return { ...state, stages };
     }
+
+    case 'OPEN_PARAM_PANEL':
+      return { ...state, paramPanelSlotId: action.slotId, paramPanelZoneIndex: action.zoneIndex };
+
+    case 'CLOSE_PARAM_PANEL':
+      return { ...state, paramPanelSlotId: null, paramPanelZoneIndex: null };
 
     case 'TOGGLE_ZONE': {
       const stages = state.stages.map((s, i) => {

@@ -2,6 +2,7 @@ import { useCallback } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageMedia } from '../../api/stages';
 import { buildThumbnailUrl } from '../../api/media';
+import { getZoneSlots, getZoneSlotRange } from '../../lib/slot-allocation';
 import '@material/web/button/outlined-button.js';
 
 export function MediaModal() {
@@ -31,6 +32,14 @@ export function MediaModal() {
 
   if (!isOpen || !stage) return null;
 
+  // Filter to zone's dedicated slot range
+  const zoneSlots = mediaModalStageIndex !== null
+    ? getZoneSlots(mediaSlots, mediaModalStageIndex)
+    : mediaSlots;
+  const slotRange = mediaModalStageIndex !== null
+    ? getZoneSlotRange(mediaModalStageIndex)
+    : null;
+
   return (
     <div
       onClick={onBackdropClick}
@@ -49,7 +58,10 @@ export function MediaModal() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700 }}>
-            Select Media · {stage.name}
+            Select Media — {stage.name}
+            {slotRange && <span style={{ fontSize: '12px', color: 'var(--app-muted)', marginLeft: '8px' }}>
+              (Slots {slotRange.start}–{slotRange.end})
+            </span>}
           </span>
           <md-outlined-button onClick={close}>Close</md-outlined-button>
         </div>
@@ -63,7 +75,7 @@ export function MediaModal() {
             selected={!stage.mediaId}
             onClick={() => choose('')}
           />
-          {mediaSlots.map(slot => (
+          {zoneSlots.map(slot => (
             <MediaTile
               key={slot.id}
               name={`${slot.id} · ${slot.name}`}

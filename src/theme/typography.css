@@ -1,8 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&family=Geist+Mono:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --font-mono: 'DM Mono', monospace;
-  --font-display: 'Syne', sans-serif;
+  --font-mono: 'Geist Mono', 'DM Mono', monospace;
+  --font-display: 'Geist', 'Syne', sans-serif;
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
 
   --md-sys-typescale-body-medium-font: var(--font-mono);
   --md-sys-typescale-body-large-font: var(--font-mono);
