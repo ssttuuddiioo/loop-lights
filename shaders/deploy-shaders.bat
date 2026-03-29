@@ -2,15 +2,15 @@
 REM Deploy custom shaders to ENTTEC ELM
 REM Run this after pulling from git on the Windows PC
 
-set ELM_SHADERS=C:\Program Files\ENTTEC\ELM\shaders
+set ELM_ZIP=C:\Program Files\ENTTEC\ELM\shaders.zip
 set REPO_SHADERS=%~dp0
 
-echo Deploying shaders to %ELM_SHADERS% ...
+echo Adding shaders to "%ELM_ZIP%" ...
 
 for %%f in ("%REPO_SHADERS%*.frag") do (
-    echo   Copying %%~nxf
-    copy /Y "%%f" "%ELM_SHADERS%\%%~nxf"
+    echo   Adding %%~nxf
+    powershell -Command "Compress-Archive -Path '%%f' -Update -DestinationPath '%ELM_ZIP%'"
 )
 
-echo Done. Restart ELM or reload media to pick up new shaders.
+echo Done. Restart ELM to pick up new shaders.
 pause
