@@ -1,25 +1,133 @@
 /**
  * Production server for Stage Controller.
  * Serves the built app from dist/ and proxies /elm/* to the local ELM server.
+ * Password-protected via cookie-based session.
  *
  * Usage:
- *   node serve.js
+ *   node serve.cjs
  *
  * Environment variables (optional):
  *   PORT          - Port to listen on (default: 4200)
  *   ELM_HOST      - ELM server host (default: localhost)
  *   ELM_PORT      - ELM server port (default: 8057)
+ *   STAGE_PASSWORD - Password for the interface (default: warhorse)
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT || '4200', 10);
 const ELM_HOST = process.env.ELM_HOST || 'localhost';
 const ELM_PORT = parseInt(process.env.ELM_PORT || '8057', 10);
+const PASSWORD = process.env.STAGE_PASSWORD || 'warhorse';
 
 const DIST_DIR = path.join(__dirname, 'dist');
+
+// Generate a random secret for signing cookies each server start
+const COOKIE_SECRET = crypto.randomBytes(32).toString('hex');
+const COOKIE_NAME = 'stage-auth';
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
+function makeToken() {
+  return crypto.createHmac('sha256', COOKIE_SECRET).update(PASSWORD).digest('hex');
+}
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(c => {
+    const [key, ...val] = c.trim().split('=');
+    cookies[key] = val.join('=');
+  });
+  return cookies;
+}
+
+function isAuthenticated(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  return cookies[COOKIE_NAME] === makeToken();
+}
+
+const LOGIN_PAGE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stage Control</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Geist', system-ui, sans-serif;
+      background: #000;
+      color: #ededed;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .sub { font-size: 13px; color: #666; }
+    input {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: #0a0a0a;
+      color: #ededed;
+      outline: none;
+      width: 100%;
+      text-align: center;
+    }
+    input:focus { border-color: rgba(255,255,255,0.3); }
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #ededed;
+      color: #000;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+    button:hover { opacity: 0.85; }
+    .error { color: #ee0000; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <form class="login" method="POST" action="/auth/login">
+    <h1>Stage Control</h1>
+    <p class="sub">Enter password to continue</p>
+    <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password" />
+    <button type="submit">Enter</button>
+    <ERROR_PLACEHOLDER>
+  </form>
+</body>
+</html>`;
+
+function serveLogin(res, error) {
+  const html = LOGIN_PAGE.replace(
+    '<ERROR_PLACEHOLDER>',
+    error ? '<p class="error">Incorrect password</p>' : ''
+  );
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end(html);
+}
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -33,7 +141,7 @@ const MIME_TYPES = {
 };
 
 function serveStatic(req, res) {
-  let filePath = path.join(DIST_DIR, req.url === '/' ? '/index.html' : req.url);
+  let filePath = path.join(DIST_DIR, req.url === '/' ? '/index.html' : req.url.split('?')[0]);
 
   // Security: prevent directory traversal
   if (!filePath.startsWith(DIST_DIR)) {
@@ -88,11 +196,44 @@ function proxyToElm(req, res) {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/elm/')) {
-    proxyToElm(req, res);
-  } else {
-    serveStatic(req, res);
+  // Handle login form submission
+  if (req.url === '/auth/login' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      const params = new URLSearchParams(body);
+      const pw = params.get('password');
+      if (pw === PASSWORD) {
+        res.writeHead(302, {
+          'Set-Cookie': `${COOKIE_NAME}=${makeToken()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`,
+          'Location': '/',
+        });
+        res.end();
+      } else {
+        serveLogin(res, true);
+      }
+    });
+    return;
   }
+
+  // ELM proxy — still requires auth
+  if (req.url.startsWith('/elm/')) {
+    if (!isAuthenticated(req)) {
+      res.writeHead(401);
+      res.end('Unauthorized');
+      return;
+    }
+    proxyToElm(req, res);
+    return;
+  }
+
+  // All other requests require auth
+  if (!isAuthenticated(req)) {
+    serveLogin(res, false);
+    return;
+  }
+
+  serveStatic(req, res);
 });
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -100,5 +241,5 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`    http://localhost:${PORT}/`);
   console.log(`    http://0.0.0.0:${PORT}/`);
   console.log(`\n  ELM proxy -> ${ELM_HOST}:${ELM_PORT}`);
-  console.log(`\n  Open this URL on any iPad, phone, or laptop on the network.\n`);
+  console.log(`  Password protected (set STAGE_PASSWORD env var to change)\n`);
 });
