@@ -196,6 +196,13 @@ function proxyToElm(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  // Health check — no auth required (used by watchdog)
+  if (req.url === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('ok');
+    return;
+  }
+
   // Handle login form submission
   if (req.url === '/auth/login' && req.method === 'POST') {
     let body = '';
