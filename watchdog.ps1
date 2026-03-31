@@ -9,11 +9,14 @@ $RepoDir        = "C:\Users\livingwalls\loop-lights"
 $ServerScript   = Join-Path $RepoDir "serve.cjs"
 $CloudflaredExe = "C:\Tools\cloudflared.exe"
 $TunnelName     = "dimly"
+$ElmProject     = "C:\Users\livingwalls\Desktop\loop\loop-dimly.elm"
+$ElmHealthUrl   = "http://localhost:8057"
 $HealthUrl      = "http://localhost:4200/healthz"
 $LogFile        = Join-Path $RepoDir "watchdog.log"
 
 $CheckInterval  = 30          # seconds between checks
 $HealthTimeout  = 5           # seconds to wait for HTTP response
+$ElmStartupWait = 15          # seconds to wait for ELM to initialize
 $MaxLogSize     = 1MB         # rotate log when it exceeds this
 
 # --- Helpers -----------------------------------------------------------------
@@ -73,6 +76,27 @@ function Start-Tunnel {
     return $proc
 }
 
+function Test-ElmAlive {
+    try {
+        $response = Invoke-WebRequest -Uri $ElmHealthUrl -TimeoutSec $HealthTimeout `
+            -UseBasicParsing -ErrorAction Stop
+        return $response.StatusCode -ge 200 -and $response.StatusCode -lt 500
+    } catch {
+        return $false
+    }
+}
+
+function Start-Elm {
+    if (-not (Test-Path $ElmProject)) {
+        Write-Log "ERROR: ELM project not found at $ElmProject"
+        return
+    }
+    Write-Log "Starting ELM (opening project file) ..."
+    Start-Process -FilePath $ElmProject
+    Write-Log "ELM launch requested — waiting ${ElmStartupWait}s for startup"
+    Start-Sleep -Seconds $ElmStartupWait
+}
+
 function Test-ServerHealth {
     try {
         $response = Invoke-WebRequest -Uri $HealthUrl -TimeoutSec $HealthTimeout `
@@ -94,6 +118,12 @@ $consecutiveHealthFailures = 0
 $maxHealthFailures = 3  # restart server after this many consecutive failures
 
 while ($true) {
+    # --- Check ELM (must be up before server matters) ---
+    if (-not (Test-ElmAlive)) {
+        Write-Log "ELM not responding on port 8057 — starting"
+        Start-Elm
+    }
+
     # --- Check server process ---
     $alive = Get-ServerProcess
     if (-not $alive) {
