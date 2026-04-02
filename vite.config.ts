@@ -70,7 +70,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/elm': {
-        target: 'http://192.168.1.206:8057',
+        target: process.env.VITE_ELM_URL || 'http://localhost:8057',
         changeOrigin: true,
       },
     },

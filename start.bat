@@ -46,9 +46,9 @@ start "Dimly Server" cmd /c "title Dimly Server && node "%~dp0serve.cjs""
 timeout /t 3 /nobreak >nul
 
 REM --- Step 5: Start Cloudflare Tunnel ---
-echo  [5/5] Starting Cloudflare Tunnel (loop.dimly.app)...
+echo  [5/5] Starting Cloudflare Tunnel (ctrl.dimly.app)...
 echo.
-start "Dimly Tunnel" cmd /c "title Dimly Tunnel && C:\Users\livingwalls\Downloads\cloudflared-windows-amd64 tunnel run dimly"
+start "Dimly Tunnel" cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly"
 timeout /t 5 /nobreak >nul
 
 REM --- Done ---
@@ -57,7 +57,7 @@ echo  ========================================
 echo   All systems go!
 echo.
 echo   Local:   http://localhost:4200
-echo   Remote:  https://loop.dimly.app
+echo   Remote:  https://ctrl.dimly.app
 echo   Shaders: deployed to %ELM_SHADERS%
 echo  ========================================
 echo.
