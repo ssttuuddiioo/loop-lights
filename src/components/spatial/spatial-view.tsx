@@ -14,7 +14,6 @@ const HOVER_BOOST = 0.3;
 
 /** Floor / environment colors */
 const FLOOR_COLOR = 0x0c0c0c;
-const WALL_COLOR = 0x0a0a0a;
 
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
@@ -80,7 +79,7 @@ export function SpatialView() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.minDistance = 4;
-    controls.maxDistance = 40;
+    controls.maxDistance = 80;
     controls.minPolarAngle = 0.2;
     controls.maxPolarAngle = Math.PI / 2.2;
 
@@ -113,7 +112,7 @@ export function SpatialView() {
     scene.add(dir);
 
     // ── Floor ───────────────────────────────────────────────────────
-    const floorGeo = new THREE.PlaneGeometry(60, 60);
+    const floorGeo = new THREE.PlaneGeometry(200, 200);
     const floorMat = new THREE.MeshStandardMaterial({
       color: FLOOR_COLOR,
       roughness: 0.25,
@@ -125,32 +124,6 @@ export function SpatialView() {
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // ── Enclosure walls (subtle, dark) ──────────────────────────────
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: WALL_COLOR,
-      roughness: 0.9,
-      metalness: 0.0,
-      side: THREE.BackSide,
-    });
-    // Back wall
-    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 16), wallMat);
-    backWall.position.set(0, 8, -30);
-    scene.add(backWall);
-    // Side walls
-    const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 16), wallMat);
-    leftWall.rotation.y = Math.PI / 2;
-    leftWall.position.set(-30, 8, 0);
-    scene.add(leftWall);
-    const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 16), wallMat);
-    rightWall.rotation.y = -Math.PI / 2;
-    rightWall.position.set(30, 8, 0);
-    scene.add(rightWall);
-    // Ceiling
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), wallMat.clone());
-    (ceiling.material as THREE.MeshStandardMaterial).color.set(0x060606);
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = 16;
-    scene.add(ceiling);
 
     // ── Raycaster ───────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
