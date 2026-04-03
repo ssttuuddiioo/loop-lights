@@ -11,9 +11,9 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 
 const BG_COLOR = 0x080808;
 const HOVER_BOOST = 0.3;
-
-/** Floor / environment colors */
-const FLOOR_COLOR = 0x0c0c0c;
+const FLOOR_COLOR = 0x111111;
+const CONE_HEIGHT = 8;
+const CONE_SEGMENTS = 32;
 
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
@@ -21,6 +21,26 @@ function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
     if ((child as THREE.Mesh).isMesh) meshes.push(child as THREE.Mesh);
   });
   return meshes;
+}
+
+/**
+ * Create a volumetric light cone mesh for a zone.
+ * Open-ended cone pointing downward, additive blending, transparent.
+ */
+function createLightCone(radius: number): THREE.Mesh {
+  const geo = new THREE.ConeGeometry(radius, CONE_HEIGHT, CONE_SEGMENTS, 1, true);
+  // Flip so the point is at top (light source) and wide end is at bottom
+  geo.translate(0, CONE_HEIGHT / 2, 0);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  return mesh;
 }
 
 export function SpatialView() {
@@ -41,6 +61,7 @@ export function SpatialView() {
     controls: OrbitControls;
     zoneMeshes: THREE.Mesh[][];
     zoneLights: THREE.PointLight[];
+    zoneCones: THREE.Mesh[];
     zoneCount: number;
     raycaster: THREE.Raycaster;
     pointer: THREE.Vector2;
@@ -65,7 +86,7 @@ export function SpatialView() {
 
     // ── Scene ───────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(BG_COLOR, 0.018);
+    scene.fog = new THREE.FogExp2(BG_COLOR, 0.012);
 
     // ── Camera ──────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(
@@ -88,18 +109,16 @@ export function SpatialView() {
     composer.addPass(new RenderPass(scene, camera));
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(container.clientWidth, container.clientHeight),
-      0.8,   // strength
-      0.4,   // radius
-      0.3,   // threshold — low so emissive zones glow
+      1.0,   // strength — bumped for volumetric glow
+      0.6,   // radius — wider spread
+      0.2,   // threshold — lower to catch cones
     );
     composer.addPass(bloom);
 
     // ── Lighting ────────────────────────────────────────────────────
-    // Dim ambient so the zone lights dominate
-    scene.add(new THREE.AmbientLight(0xffffff, 0.08));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.06));
 
-    // Soft overhead fill
-    const dir = new THREE.DirectionalLight(0xffffff, 0.2);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.15);
     dir.position.set(0, 15, 0);
     dir.castShadow = true;
     dir.shadow.mapSize.set(1024, 1024);
@@ -111,19 +130,18 @@ export function SpatialView() {
     dir.shadow.camera.bottom = -20;
     scene.add(dir);
 
-    // ── Floor ───────────────────────────────────────────────────────
+    // ── Floor (matte concrete look) ────────────────────────────────
     const floorGeo = new THREE.PlaneGeometry(200, 200);
     const floorMat = new THREE.MeshStandardMaterial({
       color: FLOOR_COLOR,
-      roughness: 0.25,
-      metalness: 0.6,
+      roughness: 0.85,
+      metalness: 0.05,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.05;
     floor.receiveShadow = true;
     scene.add(floor);
-
 
     // ── Raycaster ───────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
@@ -133,6 +151,7 @@ export function SpatialView() {
       renderer, composer, scene, camera, controls,
       zoneMeshes: [],
       zoneLights: [],
+      zoneCones: [],
       zoneCount: 0,
       raycaster, pointer,
       hoveredZone: -1,
@@ -160,7 +179,7 @@ export function SpatialView() {
         for (let z = 0; z < zoneGroups.length; z++) {
           const meshes = collectMeshes(zoneGroups[z]);
 
-          // Compute zone center for placing the point light
+          // Compute zone bounds
           const zoneBox = new THREE.Box3();
           for (const mesh of meshes) {
             mesh.updateWorldMatrix(true, false);
@@ -185,12 +204,25 @@ export function SpatialView() {
           }
           ctx.zoneMeshes.push(meshes);
 
-          // Point light per zone — positioned above zone center
-          const light = new THREE.PointLight(0x000000, 0, Math.max(zoneSize.x, zoneSize.z) * 3);
-          light.position.set(zoneCenter.x, zoneCenter.y + zoneSize.y + 1.5, zoneCenter.z);
-          light.castShadow = false; // keep perf reasonable
+          // Point light per zone
+          const lightRange = Math.max(zoneSize.x, zoneSize.z) * 4;
+          const light = new THREE.PointLight(0x000000, 0, lightRange);
+          light.position.set(zoneCenter.x, zoneCenter.y + zoneSize.y + 2, zoneCenter.z);
           scene.add(light);
           ctx.zoneLights.push(light);
+
+          // Volumetric light cone per zone
+          const coneRadius = Math.max(zoneSize.x, zoneSize.z) * 0.6;
+          const cone = createLightCone(coneRadius);
+          // Position: tip at light position, opens downward
+          cone.position.set(
+            zoneCenter.x,
+            zoneCenter.y + zoneSize.y + 2,
+            zoneCenter.z,
+          );
+          cone.rotation.x = Math.PI; // flip to point downward
+          scene.add(cone);
+          ctx.zoneCones.push(cone);
         }
 
         // Auto-frame
@@ -203,8 +235,7 @@ export function SpatialView() {
         controls.update();
 
         // Position floor at model base
-        const modelBottom = box.min.y;
-        floor.position.y = modelBottom - 0.05;
+        floor.position.y = box.min.y - 0.05;
 
         setLoading(false);
       },
@@ -267,13 +298,22 @@ export function SpatialView() {
           mat.emissiveIntensity = intensity + (isHovered ? HOVER_BOOST : 0);
         }
 
-        // Update point light to cast colored light onto floor/walls
+        // Update point light
         const light = ctx.zoneLights[z];
         if (light) {
           _color.set(stage.color);
           light.color.copy(_color);
-          // Scale light intensity with stage intensity — bright enough to splash on floor
-          light.intensity = intensity * 4;
+          light.intensity = intensity * 5;
+        }
+
+        // Update volumetric cone
+        const cone = ctx.zoneCones[z];
+        if (cone) {
+          const mat = cone.material as THREE.MeshBasicMaterial;
+          _color.set(stage.color);
+          mat.color.copy(_color);
+          // Opacity scales with intensity — faint at low, visible at high
+          mat.opacity = intensity * 0.18;
         }
 
         // Thumbnail textures
@@ -288,7 +328,7 @@ export function SpatialView() {
         }
       }
 
-      // Raycast
+      // Raycast (only zone meshes, not cones)
       raycaster.setFromCamera(pointer, camera);
       const allMeshes = ctx.zoneMeshes.flat();
       const hits = raycaster.intersectObjects(allMeshes);
@@ -300,7 +340,6 @@ export function SpatialView() {
         renderer.domElement.style.cursor = newHovered >= 0 ? 'pointer' : 'default';
       }
 
-      // Render through bloom composer
       composer.render();
     }
     animate();
@@ -350,6 +389,10 @@ export function SpatialView() {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         if (mat.map) mat.map.dispose();
         mat.dispose();
+      });
+      ctx.zoneCones.forEach(cone => {
+        cone.geometry.dispose();
+        (cone.material as THREE.Material).dispose();
       });
       ctx.zoneLights.forEach(l => l.dispose());
       composer.dispose();
