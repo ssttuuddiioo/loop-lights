@@ -5,13 +5,17 @@ import { ZoneModal } from './zone-modal';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
-const BG_COLOR = 0x0a0a0a;
-const HOVER_BOOST = 0.25;
+const BG_COLOR = 0x080808;
+const HOVER_BOOST = 0.3;
 
-/**
- * Collect every Mesh descendant of a given Object3D.
- */
+/** Floor / environment colors */
+const FLOOR_COLOR = 0x0c0c0c;
+const WALL_COLOR = 0x0a0a0a;
+
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
   root.traverse((child) => {
@@ -32,10 +36,12 @@ export function SpatialView() {
 
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer;
+    composer: EffectComposer;
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
-    zoneMeshes: THREE.Mesh[][];   // zoneMeshes[i] = all meshes for zone i
+    zoneMeshes: THREE.Mesh[][];
+    zoneLights: THREE.PointLight[];
     zoneCount: number;
     raycaster: THREE.Raycaster;
     pointer: THREE.Vector2;
@@ -47,26 +53,29 @@ export function SpatialView() {
     const container = containerRef.current;
     if (!container) return;
 
-    // Renderer
+    // ── Renderer ────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(BG_COLOR);
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.2;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // Scene
+    // ── Scene ───────────────────────────────────────────────────────
     const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(BG_COLOR, 0.018);
 
-    // Camera
+    // ── Camera ──────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(
       50, container.clientWidth / container.clientHeight, 0.1, 200,
     );
     camera.position.set(0, 12, 14);
     camera.lookAt(0, 0, 0);
 
-    // Controls
+    // ── Controls ────────────────────────────────────────────────────
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
@@ -75,19 +84,82 @@ export function SpatialView() {
     controls.minPolarAngle = 0.2;
     controls.maxPolarAngle = Math.PI / 2.2;
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.15));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.4);
-    dir.position.set(5, 10, 5);
+    // ── Post-processing (bloom) ─────────────────────────────────────
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(
+      new THREE.Vector2(container.clientWidth, container.clientHeight),
+      0.8,   // strength
+      0.4,   // radius
+      0.3,   // threshold — low so emissive zones glow
+    );
+    composer.addPass(bloom);
+
+    // ── Lighting ────────────────────────────────────────────────────
+    // Dim ambient so the zone lights dominate
+    scene.add(new THREE.AmbientLight(0xffffff, 0.08));
+
+    // Soft overhead fill
+    const dir = new THREE.DirectionalLight(0xffffff, 0.2);
+    dir.position.set(0, 15, 0);
+    dir.castShadow = true;
+    dir.shadow.mapSize.set(1024, 1024);
+    dir.shadow.camera.near = 0.5;
+    dir.shadow.camera.far = 50;
+    dir.shadow.camera.left = -20;
+    dir.shadow.camera.right = 20;
+    dir.shadow.camera.top = 20;
+    dir.shadow.camera.bottom = -20;
     scene.add(dir);
 
-    // Raycaster
+    // ── Floor ───────────────────────────────────────────────────────
+    const floorGeo = new THREE.PlaneGeometry(60, 60);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: FLOOR_COLOR,
+      roughness: 0.25,
+      metalness: 0.6,
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.05;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // ── Enclosure walls (subtle, dark) ──────────────────────────────
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: WALL_COLOR,
+      roughness: 0.9,
+      metalness: 0.0,
+      side: THREE.BackSide,
+    });
+    // Back wall
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 16), wallMat);
+    backWall.position.set(0, 8, -30);
+    scene.add(backWall);
+    // Side walls
+    const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 16), wallMat);
+    leftWall.rotation.y = Math.PI / 2;
+    leftWall.position.set(-30, 8, 0);
+    scene.add(leftWall);
+    const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 16), wallMat);
+    rightWall.rotation.y = -Math.PI / 2;
+    rightWall.position.set(30, 8, 0);
+    scene.add(rightWall);
+    // Ceiling
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), wallMat.clone());
+    (ceiling.material as THREE.MeshStandardMaterial).color.set(0x060606);
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = 16;
+    scene.add(ceiling);
+
+    // ── Raycaster ───────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2(-999, -999);
 
     const ctx: NonNullable<typeof sceneRef.current> = {
-      renderer, scene, camera, controls,
+      renderer, composer, scene, camera, controls,
       zoneMeshes: [],
+      zoneLights: [],
       zoneCount: 0,
       raycaster, pointer,
       hoveredZone: -1,
@@ -103,34 +175,52 @@ export function SpatialView() {
         const model = gltf.scene;
         scene.add(model);
 
-        // Find zone groups by name: zone1, zone2, …, zone7
+        // Find zone groups
         const zoneGroups: THREE.Object3D[] = [];
         for (let i = 1; i <= 20; i++) {
           const group = model.getObjectByName(`zone${i}`);
           if (group) zoneGroups.push(group);
           else break;
         }
-
         ctx.zoneCount = zoneGroups.length;
 
-        // For each zone, collect meshes and replace materials with emissive
         for (let z = 0; z < zoneGroups.length; z++) {
           const meshes = collectMeshes(zoneGroups[z]);
+
+          // Compute zone center for placing the point light
+          const zoneBox = new THREE.Box3();
+          for (const mesh of meshes) {
+            mesh.updateWorldMatrix(true, false);
+            zoneBox.expandByObject(mesh);
+          }
+          const zoneCenter = zoneBox.getCenter(new THREE.Vector3());
+          const zoneSize = zoneBox.getSize(new THREE.Vector3());
+
+          // Replace materials
           for (const mesh of meshes) {
             const mat = new THREE.MeshStandardMaterial({
               color: 0x1a1a1a,
               emissive: new THREE.Color(0x000000),
               emissiveIntensity: 0,
-              roughness: 0.7,
-              metalness: 0.1,
+              roughness: 0.5,
+              metalness: 0.15,
             });
             mesh.material = mat;
             mesh.userData.zoneIndex = z;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
           }
           ctx.zoneMeshes.push(meshes);
+
+          // Point light per zone — positioned above zone center
+          const light = new THREE.PointLight(0x000000, 0, Math.max(zoneSize.x, zoneSize.z) * 3);
+          light.position.set(zoneCenter.x, zoneCenter.y + zoneSize.y + 1.5, zoneCenter.z);
+          light.castShadow = false; // keep perf reasonable
+          scene.add(light);
+          ctx.zoneLights.push(light);
         }
 
-        // Auto-frame the model
+        // Auto-frame
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
@@ -138,6 +228,10 @@ export function SpatialView() {
         controls.target.copy(center);
         camera.position.set(center.x, center.y + maxDim * 0.8, center.z + maxDim * 1.2);
         controls.update();
+
+        // Position floor at model base
+        const modelBottom = box.min.y;
+        floor.position.y = modelBottom - 0.05;
 
         setLoading(false);
       },
@@ -149,7 +243,7 @@ export function SpatialView() {
       },
     );
 
-    // ── Texture loading for media thumbnails ────────────────────────
+    // ── Texture loading ─────────────────────────────────────────────
     const textureLoader = new THREE.TextureLoader();
     const loadedMediaIds: (string | number)[] = [];
 
@@ -178,13 +272,14 @@ export function SpatialView() {
     }
 
     // ── Animation loop ──────────────────────────────────────────────
+    const _color = new THREE.Color();
+
     function animate() {
       ctx.animId = requestAnimationFrame(animate);
       controls.update();
 
       const s = stateRef.current;
 
-      // Update zone materials from stage state
       for (let z = 0; z < ctx.zoneMeshes.length; z++) {
         const stage = s.stages[z];
         if (!stage) continue;
@@ -192,13 +287,23 @@ export function SpatialView() {
         const intensity = s.blackout ? 0 : (stage.intensity * s.masterLevel / 10000);
         const isHovered = ctx.hoveredZone === z;
 
+        // Update mesh emissive
         for (const mesh of ctx.zoneMeshes[z]) {
           const mat = mesh.material as THREE.MeshStandardMaterial;
           mat.emissive.set(stage.color);
           mat.emissiveIntensity = intensity + (isHovered ? HOVER_BOOST : 0);
         }
 
-        // Load/clear thumbnail texture when media changes
+        // Update point light to cast colored light onto floor/walls
+        const light = ctx.zoneLights[z];
+        if (light) {
+          _color.set(stage.color);
+          light.color.copy(_color);
+          // Scale light intensity with stage intensity — bright enough to splash on floor
+          light.intensity = intensity * 4;
+        }
+
+        // Thumbnail textures
         const mid = stage.mediaId;
         if (mid && mid !== loadedMediaIds[z]) {
           loadedMediaIds[z] = mid;
@@ -210,7 +315,7 @@ export function SpatialView() {
         }
       }
 
-      // Raycast for hover — check all zone meshes
+      // Raycast
       raycaster.setFromCamera(pointer, camera);
       const allMeshes = ctx.zoneMeshes.flat();
       const hits = raycaster.intersectObjects(allMeshes);
@@ -222,7 +327,8 @@ export function SpatialView() {
         renderer.domElement.style.cursor = newHovered >= 0 ? 'pointer' : 'default';
       }
 
-      renderer.render(scene, camera);
+      // Render through bloom composer
+      composer.render();
     }
     animate();
 
@@ -231,6 +337,7 @@ export function SpatialView() {
       const w = container.clientWidth;
       const h = container.clientHeight;
       renderer.setSize(w, h);
+      composer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     });
@@ -271,6 +378,8 @@ export function SpatialView() {
         if (mat.map) mat.map.dispose();
         mat.dispose();
       });
+      ctx.zoneLights.forEach(l => l.dispose());
+      composer.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -282,10 +391,9 @@ export function SpatialView() {
   const closeModal = useCallback(() => setSelectedZone(null), []);
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: 'var(--app-bg)' }}>
+    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: '#080808' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Loading overlay */}
       {loading && !error && (
         <div style={{
           position: 'absolute', inset: 0,
@@ -296,7 +404,6 @@ export function SpatialView() {
         </div>
       )}
 
-      {/* Error overlay */}
       {error && (
         <div style={{
           position: 'absolute', inset: 0,
@@ -307,10 +414,8 @@ export function SpatialView() {
         </div>
       )}
 
-      {/* Zone labels */}
       <ZoneLabels />
 
-      {/* Zone control modal */}
       {selectedZone !== null && (
         <ZoneModal stageIndex={selectedZone} onClose={closeModal} />
       )}
