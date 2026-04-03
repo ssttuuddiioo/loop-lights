@@ -23,7 +23,6 @@ export const INCREMENT_FAILURES = 'INCREMENT_FAILURES' as const;
 export const RESET_FAILURES = 'RESET_FAILURES' as const;
 
 // UI actions
-export const SET_ACTIVE_PAGE = 'SET_ACTIVE_PAGE' as const;
 export const SET_BANK = 'SET_BANK' as const;
 export const OPEN_COLOR_MODAL = 'OPEN_COLOR_MODAL' as const;
 export const CLOSE_COLOR_MODAL = 'CLOSE_COLOR_MODAL' as const;
@@ -60,7 +59,6 @@ export type AppAction =
   | { type: typeof SET_WATCHDOG; text: string; ok: boolean }
   | { type: typeof INCREMENT_FAILURES }
   | { type: typeof RESET_FAILURES }
-  | { type: typeof SET_ACTIVE_PAGE; page: 'control' | 'overview' }
   | { type: typeof SET_BANK; bank: number }
   | { type: typeof OPEN_COLOR_MODAL; index: number }
   | { type: typeof CLOSE_COLOR_MODAL }

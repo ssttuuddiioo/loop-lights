@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useAppDispatch } from '../../state/context';
 import { useSyncEngine } from '../../hooks/use-sync-engine';
-import { TopBar } from './top-bar';
+import { GlobalToolbar } from './global-toolbar';
 import { PreviewStrip } from './preview-strip';
 
 export function PageShell({ children }: { children: ComponentChildren }) {
@@ -36,7 +36,7 @@ export function PageShell({ children }: { children: ComponentChildren }) {
 
   return (
     <>
-      <TopBar />
+      <GlobalToolbar />
       <main>{children}</main>
       <PreviewStrip />
     </>

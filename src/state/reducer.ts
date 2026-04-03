@@ -23,7 +23,6 @@ export interface AppState {
   reconnectFailures: number;
 
   // UI
-  activePage: 'control' | 'overview';
   currentBank: number;
   colorModalStageIndex: number | null;
   mediaModalStageIndex: number | null;
@@ -54,7 +53,6 @@ export const initialState: AppState = {
   watchdogOk: true,
   reconnectFailures: 0,
 
-  activePage: 'control',
   currentBank: 0,
   colorModalStageIndex: null,
   mediaModalStageIndex: null,
@@ -148,9 +146,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'RESET_FAILURES':
       return { ...state, reconnectFailures: 0 };
-
-    case 'SET_ACTIVE_PAGE':
-      return { ...state, activePage: action.page };
 
     case 'SET_BANK':
       return { ...state, currentBank: action.bank };
