@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'preact/hooks';
 import { useAppState } from '../../state/context';
 import { buildThumbnailUrl } from '../../api/media';
-import { ZoneModal } from './zone-modal';
+import { ZoneSidebar } from './zone-sidebar';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -12,8 +12,6 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 const BG_COLOR = 0x080808;
 const HOVER_BOOST = 0.3;
 const FLOOR_COLOR = 0x111111;
-const CONE_HEIGHT = 8;
-const CONE_SEGMENTS = 32;
 
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
@@ -21,26 +19,6 @@ function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
     if ((child as THREE.Mesh).isMesh) meshes.push(child as THREE.Mesh);
   });
   return meshes;
-}
-
-/**
- * Create a volumetric light cone mesh for a zone.
- * Open-ended cone pointing downward, additive blending, transparent.
- */
-function createLightCone(radius: number): THREE.Mesh {
-  const geo = new THREE.ConeGeometry(radius, CONE_HEIGHT, CONE_SEGMENTS, 1, true);
-  // Flip so the point is at top (light source) and wide end is at bottom
-  geo.translate(0, CONE_HEIGHT / 2, 0);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0x000000,
-    transparent: true,
-    opacity: 0,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  return mesh;
 }
 
 export function SpatialView() {
@@ -53,21 +31,8 @@ export function SpatialView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sceneRef = useRef<{
-    renderer: THREE.WebGLRenderer;
-    composer: EffectComposer;
-    scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
-    controls: OrbitControls;
-    zoneMeshes: THREE.Mesh[][];
-    zoneLights: THREE.PointLight[];
-    zoneCones: THREE.Mesh[];
-    zoneCount: number;
-    raycaster: THREE.Raycaster;
-    pointer: THREE.Vector2;
-    hoveredZone: number;
-    animId: number;
-  } | null>(null);
+  // @ts-ignore
+  const sceneRef = useRef<any>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -103,15 +68,17 @@ export function SpatialView() {
     controls.maxDistance = 80;
     controls.minPolarAngle = 0.2;
     controls.maxPolarAngle = Math.PI / 2.2;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.3;
 
     // ── Post-processing (bloom) ─────────────────────────────────────
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(container.clientWidth, container.clientHeight),
-      1.0,   // strength — bumped for volumetric glow
-      0.6,   // radius — wider spread
-      0.2,   // threshold — lower to catch cones
+      1.0,   // strength
+      0.6,   // radius
+      0.2,   // threshold
     );
     composer.addPass(bloom);
 
@@ -130,7 +97,7 @@ export function SpatialView() {
     dir.shadow.camera.bottom = -20;
     scene.add(dir);
 
-    // ── Floor (matte concrete look) ────────────────────────────────
+    // ── Floor (matte) ───────────────────────────────────────────────
     const floorGeo = new THREE.PlaneGeometry(200, 200);
     const floorMat = new THREE.MeshStandardMaterial({
       color: FLOOR_COLOR,
@@ -147,11 +114,11 @@ export function SpatialView() {
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2(-999, -999);
 
-    const ctx: NonNullable<typeof sceneRef.current> = {
+    const ctx: any = {
       renderer, composer, scene, camera, controls,
-      zoneMeshes: [],
-      zoneLights: [],
-      zoneCones: [],
+      zoneMeshes: [] as THREE.Mesh[][],
+      zoneHitBoxes: [] as THREE.Mesh[],
+      zoneLights: [] as THREE.PointLight[],
       zoneCount: 0,
       raycaster, pointer,
       hoveredZone: -1,
@@ -167,7 +134,6 @@ export function SpatialView() {
         const model = gltf.scene;
         scene.add(model);
 
-        // Find zone groups
         const zoneGroups: THREE.Object3D[] = [];
         for (let i = 1; i <= 20; i++) {
           const group = model.getObjectByName(`zone${i}`);
@@ -179,7 +145,6 @@ export function SpatialView() {
         for (let z = 0; z < zoneGroups.length; z++) {
           const meshes = collectMeshes(zoneGroups[z]);
 
-          // Compute zone bounds
           const zoneBox = new THREE.Box3();
           for (const mesh of meshes) {
             mesh.updateWorldMatrix(true, false);
@@ -188,7 +153,6 @@ export function SpatialView() {
           const zoneCenter = zoneBox.getCenter(new THREE.Vector3());
           const zoneSize = zoneBox.getSize(new THREE.Vector3());
 
-          // Replace materials
           for (const mesh of meshes) {
             const mat = new THREE.MeshStandardMaterial({
               color: 0x1a1a1a,
@@ -211,18 +175,19 @@ export function SpatialView() {
           scene.add(light);
           ctx.zoneLights.push(light);
 
-          // Volumetric light cone per zone
-          const coneRadius = Math.max(zoneSize.x, zoneSize.z) * 0.6;
-          const cone = createLightCone(coneRadius);
-          // Position: tip at light position, opens downward
-          cone.position.set(
-            zoneCenter.x,
-            zoneCenter.y + zoneSize.y + 2,
-            zoneCenter.z,
+          // Invisible hit box — padded bounding box for easier clicking
+          const padding = 0.5;
+          const hitGeo = new THREE.BoxGeometry(
+            zoneSize.x + padding * 2,
+            zoneSize.y + padding * 2,
+            zoneSize.z + padding * 2,
           );
-          cone.rotation.x = Math.PI; // flip to point downward
-          scene.add(cone);
-          ctx.zoneCones.push(cone);
+          const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+          const hitBox = new THREE.Mesh(hitGeo, hitMat);
+          hitBox.position.copy(zoneCenter);
+          hitBox.userData.zoneIndex = z;
+          scene.add(hitBox);
+          ctx.zoneHitBoxes.push(hitBox);
         }
 
         // Auto-frame
@@ -234,7 +199,6 @@ export function SpatialView() {
         camera.position.set(center.x, center.y + maxDim * 0.8, center.z + maxDim * 1.2);
         controls.update();
 
-        // Position floor at model base
         floor.position.y = box.min.y - 0.05;
 
         setLoading(false);
@@ -291,14 +255,12 @@ export function SpatialView() {
         const intensity = s.blackout ? 0 : (stage.intensity * s.masterLevel / 10000);
         const isHovered = ctx.hoveredZone === z;
 
-        // Update mesh emissive
         for (const mesh of ctx.zoneMeshes[z]) {
           const mat = mesh.material as THREE.MeshStandardMaterial;
           mat.emissive.set(stage.color);
           mat.emissiveIntensity = intensity + (isHovered ? HOVER_BOOST : 0);
         }
 
-        // Update point light
         const light = ctx.zoneLights[z];
         if (light) {
           _color.set(stage.color);
@@ -306,17 +268,6 @@ export function SpatialView() {
           light.intensity = intensity * 5;
         }
 
-        // Update volumetric cone
-        const cone = ctx.zoneCones[z];
-        if (cone) {
-          const mat = cone.material as THREE.MeshBasicMaterial;
-          _color.set(stage.color);
-          mat.color.copy(_color);
-          // Opacity scales with intensity — faint at low, visible at high
-          mat.opacity = intensity * 0.18;
-        }
-
-        // Thumbnail textures
         const mid = stage.mediaId;
         if (mid && mid !== loadedMediaIds[z]) {
           loadedMediaIds[z] = mid;
@@ -328,10 +279,8 @@ export function SpatialView() {
         }
       }
 
-      // Raycast (only zone meshes, not cones)
       raycaster.setFromCamera(pointer, camera);
-      const allMeshes = ctx.zoneMeshes.flat();
-      const hits = raycaster.intersectObjects(allMeshes);
+      const hits = raycaster.intersectObjects(ctx.zoneHitBoxes);
       const newHovered = hits.length > 0
         ? (hits[0].object.userData.zoneIndex as number)
         : -1;
@@ -366,15 +315,37 @@ export function SpatialView() {
       ctx.hoveredZone = -1;
       renderer.domElement.style.cursor = 'default';
     }
-    function onClick() {
-      if (ctx.hoveredZone >= 0) {
-        setSelectedZone(ctx.hoveredZone);
+
+    // Track pointer down position to distinguish tap from drag
+    let pointerDownPos = { x: 0, y: 0 };
+    function onPointerDown(e: PointerEvent) {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    }
+    function onPointerUp(e: PointerEvent) {
+      // Ignore drags (orbit gestures)
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      if (dx * dx + dy * dy > 25) return;
+
+      // Raycast at tap/click position
+      const rect = renderer.domElement.getBoundingClientRect();
+      const tapPointer = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(tapPointer, camera);
+      const hits = raycaster.intersectObjects(ctx.zoneHitBoxes);
+      if (hits.length > 0) {
+        setSelectedZone(hits[0].object.userData.zoneIndex as number);
+      } else {
+        setSelectedZone(null);
       }
     }
 
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerleave', onPointerLeave);
-    renderer.domElement.addEventListener('click', onClick);
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    renderer.domElement.addEventListener('pointerup', onPointerUp);
 
     // ── Cleanup ─────────────────────────────────────────────────────
     return () => {
@@ -382,19 +353,18 @@ export function SpatialView() {
       ro.disconnect();
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
       renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
-      renderer.domElement.removeEventListener('click', onClick);
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      renderer.domElement.removeEventListener('pointerup', onPointerUp);
       controls.dispose();
-      ctx.zoneMeshes.flat().forEach(mesh => {
+      ctx.zoneMeshes.flat().forEach((mesh: THREE.Mesh) => {
         mesh.geometry.dispose();
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        if (mat.map) mat.map.dispose();
-        mat.dispose();
+        (mesh.material as THREE.Material).dispose();
       });
-      ctx.zoneCones.forEach(cone => {
-        cone.geometry.dispose();
-        (cone.material as THREE.Material).dispose();
+      ctx.zoneHitBoxes.forEach((hb: THREE.Mesh) => {
+        hb.geometry.dispose();
+        (hb.material as THREE.Material).dispose();
       });
-      ctx.zoneLights.forEach(l => l.dispose());
+      ctx.zoneLights.forEach((l: THREE.PointLight) => l.dispose());
       composer.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
@@ -432,9 +402,7 @@ export function SpatialView() {
 
       <ZoneLabels />
 
-      {selectedZone !== null && (
-        <ZoneModal stageIndex={selectedZone} onClose={closeModal} />
-      )}
+      <ZoneSidebar stageIndex={selectedZone} onClose={closeModal} />
     </div>
   );
 }
