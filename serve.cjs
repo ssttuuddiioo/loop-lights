@@ -223,7 +223,8 @@ const server = http.createServer((req, res) => {
   }
 
   // --- Advatek health API (requires auth) ---
-  if (req.url === '/api/health/controllers' && req.method === 'GET') {
+  const cleanUrl = req.url.split('?')[0].replace(/\/$/, '');
+  if (cleanUrl === '/api/health/controllers' && req.method === 'GET') {
     if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(monitor.getAll()));
