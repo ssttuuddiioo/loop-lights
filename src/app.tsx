@@ -7,6 +7,7 @@ import { Dashboard } from './components/dashboard/dashboard';
 import { ColorModal } from './components/modals/color-modal';
 import { MediaModal } from './components/modals/media-modal';
 import { ShaderPreviewModal } from './components/modals/shader-preview-modal';
+import { ControllersPage } from './pages/controllers';
 
 const SpatialView = lazy(() => import('./components/spatial/spatial-view').then(m => ({ default: m.SpatialView })));
 
@@ -33,6 +34,7 @@ function AppContent() {
         <Route path="/" component={Dashboard} />
         <Route path="/mixer" component={ControlSurface} />
         <Route path="/3d" component={SpatialRoute} />
+        <Route path="/controllers" component={ControllersPage} />
         <Route><Redirect to="/" /></Route>
       </Switch>
       <ColorModal />

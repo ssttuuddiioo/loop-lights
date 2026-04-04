@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Dashboard' },
   { href: '/mixer', label: 'Mixer' },
   { href: '/3d', label: '3D' },
+  { href: '/controllers', label: 'Controllers' },
 ] as const;
 
 export function AppNav() {

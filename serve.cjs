@@ -195,11 +195,58 @@ function proxyToElm(req, res) {
   req.pipe(proxyReq, { end: true });
 }
 
+// --- Advatek Controller Monitoring ---
+const { ControllerMonitor } = require('./src/advatek.cjs');
+
+const controllerList = (process.env.DIMLY_CONTROLLERS || '2.0.0.21:T8-S Unit 1')
+  .split(',')
+  .map(entry => {
+    const [ip, ...labelParts] = entry.trim().split(':');
+    return { ip: ip.trim(), label: labelParts.join(':').trim() || ip.trim() };
+  })
+  .filter(c => c.ip);
+
+const monitor = new ControllerMonitor(controllerList, {
+  pollInterval: parseInt(process.env.DIMLY_POLL_INTERVAL || '30000'),
+  connectTimeout: parseInt(process.env.DIMLY_CONNECT_TIMEOUT || '5000'),
+});
+
+monitor.start();
+console.log(`  [advatek] Monitoring ${controllerList.length} controller(s): ${controllerList.map(c => c.ip).join(', ')}`);
+
 const server = http.createServer((req, res) => {
   // Health check — no auth required (used by watchdog)
   if (req.url === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('ok');
+    return;
+  }
+
+  // --- Advatek health API (requires auth) ---
+  if (req.url === '/api/health/controllers' && req.method === 'GET') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(monitor.getAll()));
+    return;
+  }
+
+  if (req.url.startsWith('/api/health/controllers/') && req.method === 'GET') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    const ip = req.url.replace('/api/health/controllers/', '').split('?')[0];
+    const data = monitor.getOne(ip);
+    if (!data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Controller not found' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(data));
+    return;
+  }
+
+  if (req.url === '/api/health/controllers/refresh' && req.method === 'POST') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    controllerList.forEach(c => monitor._poll(c));
+    setTimeout(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(monitor.getAll()));
+    }, 3000);
     return;
   }
 

@@ -73,6 +73,10 @@ export default defineConfig({
         target: process.env.VITE_ELM_URL || 'http://localhost:8057',
         changeOrigin: true,
       },
+      '/api/health': {
+        target: process.env.VITE_SERVE_URL || 'http://localhost:4201',
+        changeOrigin: true,
+      },
     },
   },
   build: {
