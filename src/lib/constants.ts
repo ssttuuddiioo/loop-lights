@@ -13,7 +13,7 @@ export const COLOR_PRESETS = [
   { name: 'Red', hex: '#ff3c3c' },
 ] as const;
 
-export const STAGES_PER_BANK = 6;
+export const STAGES_PER_BANK = 7;
 export const SYNC_INTERVAL_MS = 10_000;
 export const DIRTY_DURATION_MS = 3_000;
 export const FADER_THROTTLE_MS = 60;
