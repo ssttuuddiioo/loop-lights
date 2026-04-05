@@ -10,12 +10,12 @@ import type { StageState } from '../../types/stage';
 interface ColorSectionProps {
   stage: StageState;
   stageIndex: number;
-  onOpenModal: () => void;
+  onOpenModal?: () => void;
 }
 
 let colorTimers: Record<number, ReturnType<typeof setTimeout>> = {};
 
-export const ColorSection = memo(function ColorSection({ stage, stageIndex, onOpenModal }: ColorSectionProps) {
+export const ColorSection = memo(function ColorSection({ stage, stageIndex }: ColorSectionProps) {
   const dispatch = useAppDispatch();
 
   const setColor = useCallback((hex: string) => {

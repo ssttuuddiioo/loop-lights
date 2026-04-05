@@ -29,14 +29,6 @@ const selectStyle = {
   backgroundPosition: 'right 8px center',
 };
 
-const labelStyle = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '10px',
-  color: 'var(--app-muted)',
-  letterSpacing: '0.03em',
-  marginBottom: '3px',
-};
-
 export const MediaSection = memo(function MediaSection({ stage, stageIndex, onOpenModal }: MediaSectionProps) {
   const { mediaSlots } = useAppState();
   const dispatch = useAppDispatch();

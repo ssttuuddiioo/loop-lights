@@ -1,4 +1,3 @@
-import { useMemo } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageIntensity } from '../../api/stages';
 import { ColorPanel } from '../modals/color-modal';
