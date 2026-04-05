@@ -51,7 +51,7 @@ export type AppAction =
   | { type: typeof SET_STAGE_COLOR; index: number; hex: string }
   | { type: typeof SET_STAGE_MEDIA; index: number; mediaId: string | number }
   | { type: typeof MARK_DIRTY; index: number }
-  | { type: typeof SET_MASTER_LEVEL; level: number }
+  | { type: typeof SET_MASTER_LEVEL; level: number; fromSync?: boolean }
   | { type: typeof TOGGLE_BLACKOUT }
   | { type: typeof SET_MEDIA_SLOTS; slots: MediaSlot[] }
   | { type: typeof SET_CONNECTED; connected: boolean; message?: string }

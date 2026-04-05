@@ -4,26 +4,23 @@ import { postMasterIntensity } from '../../api/settings';
 import '@material/web/button/filled-button.js';
 
 export function BlackoutButton() {
-  const { blackout } = useAppState();
+  const { blackout, preBlackoutLevel } = useAppState();
   const dispatch = useAppDispatch();
 
   const onClick = useCallback(async () => {
     dispatch({ type: 'TOGGLE_BLACKOUT' });
-    // Read the new master level after toggle
-    // Blackout → master=0, Restore → master=preBlackout
-    // We post after the state update
     try {
-      // Small delay to let reducer run, then read from DOM
-      // Actually we know: if was blackout, we restore; if wasn't, we set 0
-      const nextLevel = blackout ? undefined : 0;
-      if (nextLevel === 0) {
+      if (!blackout) {
+        // Entering blackout → send 0 to ELM
         await postMasterIntensity(0);
+      } else {
+        // Restoring → send pre-blackout level to ELM
+        await postMasterIntensity(preBlackoutLevel / 100);
       }
-      // For restore, the master-fader component will post
     } catch (err) {
       console.error('Blackout toggle failed:', err);
     }
-  }, [blackout, dispatch]);
+  }, [blackout, preBlackoutLevel, dispatch]);
 
   return (
     <md-filled-button

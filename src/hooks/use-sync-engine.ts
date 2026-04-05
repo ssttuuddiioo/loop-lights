@@ -100,10 +100,10 @@ export function useSyncEngine() {
 
         d({ type: 'SET_STAGES', stages: newStages });
 
-        // Update master from server
-        if (settings.masterIntensity !== undefined) {
+        // Update master from server (skip if recently changed locally)
+        if (settings.masterIntensity !== undefined && (currentState.masterDirtyUntil || 0) < now) {
           const masterPct = Math.max(0, Math.min(100, Math.round(Number(settings.masterIntensity) * 100)));
-          d({ type: 'SET_MASTER_LEVEL', level: masterPct });
+          d({ type: 'SET_MASTER_LEVEL', level: masterPct, fromSync: true });
         }
 
         d({ type: 'SET_CONNECTED', connected: true });

@@ -10,6 +10,7 @@ export interface AppState {
   blackout: boolean;
   preBlackoutLevel: number;
   dirtyUntil: Record<number, number>;
+  masterDirtyUntil: number;
 
   // Media
   mediaSlots: MediaSlot[];
@@ -43,6 +44,7 @@ export const initialState: AppState = {
   blackout: false,
   preBlackoutLevel: 100,
   dirtyUntil: {},
+  masterDirtyUntil: 0,
 
   mediaSlots: [],
 
@@ -116,16 +118,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         masterLevel: level,
         blackout,
         preBlackoutLevel: blackout ? state.preBlackoutLevel : level,
+        masterDirtyUntil: action.fromSync ? state.masterDirtyUntil : Date.now() + DIRTY_DURATION_MS,
       };
     }
 
     case 'TOGGLE_BLACKOUT': {
       const nowBlackout = !state.blackout;
+      const dirty = Date.now() + DIRTY_DURATION_MS;
       if (nowBlackout) {
         const pre = state.masterLevel > 0 ? state.masterLevel : (state.preBlackoutLevel || 100);
-        return { ...state, blackout: true, preBlackoutLevel: pre, masterLevel: 0 };
+        return { ...state, blackout: true, preBlackoutLevel: pre, masterLevel: 0, masterDirtyUntil: dirty };
       } else {
-        return { ...state, blackout: false, masterLevel: state.preBlackoutLevel || 100 };
+        return { ...state, blackout: false, masterLevel: state.preBlackoutLevel || 100, masterDirtyUntil: dirty };
       }
     }
 
