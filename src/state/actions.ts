@@ -15,6 +15,9 @@ export const TOGGLE_BLACKOUT = 'TOGGLE_BLACKOUT' as const;
 // Media actions
 export const SET_MEDIA_SLOTS = 'SET_MEDIA_SLOTS' as const;
 
+// ELM actions
+export const SET_ELM_OUTPUT_RATE = 'SET_ELM_OUTPUT_RATE' as const;
+
 // Connection actions
 export const SET_CONNECTED = 'SET_CONNECTED' as const;
 export const SET_SYNC_STATUS = 'SET_SYNC_STATUS' as const;
@@ -54,6 +57,7 @@ export type AppAction =
   | { type: typeof SET_MASTER_LEVEL; level: number; fromSync?: boolean }
   | { type: typeof TOGGLE_BLACKOUT }
   | { type: typeof SET_MEDIA_SLOTS; slots: MediaSlot[] }
+  | { type: typeof SET_ELM_OUTPUT_RATE; rate: number }
   | { type: typeof SET_CONNECTED; connected: boolean; message?: string }
   | { type: typeof SET_SYNC_STATUS; status: 'syncing' | 'synced' | 'offline' | 'paused' }
   | { type: typeof SET_WATCHDOG; text: string; ok: boolean }

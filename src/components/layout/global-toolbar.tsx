@@ -29,7 +29,7 @@ function StatChip({ label, value }: { label: string; value: string | number }) {
 }
 
 export function GlobalToolbar() {
-  const { stages, masterLevel, mediaSlots } = useAppState();
+  const { stages, masterLevel, mediaSlots, elmOutputRate } = useAppState();
 
   return (
     <div class="topbar" style={{
@@ -47,6 +47,7 @@ export function GlobalToolbar() {
         <StatChip label="Stages" value={stages.length} />
         <StatChip label="Master Level" value={`${masterLevel}%`} />
         <StatChip label="Media Loaded" value={mediaSlots.length} />
+        <StatChip label="ELM FPS" value={elmOutputRate || '—'} />
       </div>
 
       {/* Right: master controls */}

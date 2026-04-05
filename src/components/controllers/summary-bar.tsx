@@ -1,4 +1,5 @@
 import type { HealthResponse } from '../../api/health';
+import { useAppState } from '../../state/context';
 
 const LEVEL_LABELS: Record<string, string> = {
   healthy: 'All Healthy',
@@ -16,6 +17,8 @@ export function SummaryBar({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
+  const { elmOutputRate } = useAppState();
+
   const overallColor =
     data.overall === 'healthy' ? '#33CC66' :
     data.overall === 'warning' ? '#FFAA00' :
@@ -44,6 +47,12 @@ export function SummaryBar({
           fontWeight: 500,
         }}>
           {LEVEL_LABELS[data.overall] || data.overall}
+        </span>
+        <span style={{
+          fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--app-muted)',
+          marginLeft: 8,
+        }}>
+          ELM {elmOutputRate || '—'} fps
         </span>
       </div>
 

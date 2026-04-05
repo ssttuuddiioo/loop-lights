@@ -214,6 +214,44 @@ const monitor = new ControllerMonitor(controllerList, {
 monitor.start();
 console.log(`  [advatek] Monitoring ${controllerList.length} controller(s): ${controllerList.map(c => c.ip).join(', ')}`);
 
+// --- ELM FPS Logger (24-hour average) ---
+const fpsReadings = [];
+const FPS_SAMPLE_INTERVAL = 5 * 60 * 1000; // sample every 5 minutes
+const FPS_LOG_INTERVAL = 24 * 60 * 60 * 1000; // log every 24 hours
+
+function sampleElmFps() {
+  http.get(`http://${ELM_HOST}:${ELM_PORT}/elm/settings`, { timeout: 5000 }, (res) => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      try {
+        const settings = JSON.parse(data);
+        if (settings.outputRate !== undefined) {
+          fpsReadings.push({ rate: settings.outputRate, time: Date.now() });
+        }
+      } catch (_) {}
+    });
+  }).on('error', () => {});
+}
+
+function logDailyFps() {
+  if (fpsReadings.length === 0) return;
+  const sum = fpsReadings.reduce((a, r) => a + r.rate, 0);
+  const avg = (sum / fpsReadings.length).toFixed(1);
+  const min = Math.min(...fpsReadings.map(r => r.rate));
+  const max = Math.max(...fpsReadings.map(r => r.rate));
+  const logLine = `[${new Date().toISOString()}] ELM FPS — avg: ${avg}, min: ${min}, max: ${max}, samples: ${fpsReadings.length}\n`;
+  console.log(logLine.trim());
+  try {
+    fs.appendFileSync(path.join(__dirname, 'logs', 'fps.log'), logLine);
+  } catch (_) {}
+  fpsReadings.length = 0; // reset for next 24h
+}
+
+setInterval(sampleElmFps, FPS_SAMPLE_INTERVAL);
+setInterval(logDailyFps, FPS_LOG_INTERVAL);
+sampleElmFps(); // initial sample
+
 const server = http.createServer((req, res) => {
   // Health check — no auth required (used by watchdog)
   if (req.url === '/healthz') {

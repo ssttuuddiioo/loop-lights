@@ -106,6 +106,11 @@ export function useSyncEngine() {
           d({ type: 'SET_MASTER_LEVEL', level: masterPct, fromSync: true });
         }
 
+        // Update ELM output rate
+        if (settings.outputRate !== undefined) {
+          d({ type: 'SET_ELM_OUTPUT_RATE', rate: settings.outputRate });
+        }
+
         d({ type: 'SET_CONNECTED', connected: true });
         d({ type: 'SET_SYNC_STATUS', status: 'synced' });
         d({ type: 'SET_WATCHDOG', text: 'watching', ok: true });

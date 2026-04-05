@@ -16,6 +16,9 @@ export interface AppState {
   // Media
   mediaSlots: MediaSlot[];
 
+  // ELM
+  elmOutputRate: number;
+
   // Connection
   connected: boolean;
   connectionMessage: string;
@@ -49,6 +52,8 @@ export const initialState: AppState = {
   masterDirtyUntil: 0,
 
   mediaSlots: [],
+
+  elmOutputRate: 0,
 
   connected: false,
   connectionMessage: 'CONNECTING',
@@ -154,6 +159,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_MEDIA_SLOTS':
       return { ...state, mediaSlots: action.slots };
+
+    case 'SET_ELM_OUTPUT_RATE':
+      return { ...state, elmOutputRate: action.rate };
 
     case 'SET_CONNECTED':
       return { ...state, connected: action.connected, connectionMessage: action.message || '' };
