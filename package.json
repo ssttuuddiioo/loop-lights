@@ -12,6 +12,7 @@
   "dependencies": {
     "@material/web": "^2.4.1",
     "preact": "^10.29.0",
+    "suncalc": "^1.9.0",
     "three": "^0.172.0",
     "wouter-preact": "^3.9.0",
     "ws": "^8.20.0"

@@ -214,6 +214,12 @@ const monitor = new ControllerMonitor(controllerList, {
 monitor.start();
 console.log(`  [advatek] Monitoring ${controllerList.length} controller(s): ${controllerList.map(c => c.ip).join(', ')}`);
 
+// --- Scene Engine ---
+const { SceneEngine } = require('./src/scheduler.cjs');
+const scenesPath = process.env.DIMLY_SCENES_PATH || path.join(__dirname, 'scenes.json');
+const engine = new SceneEngine(scenesPath, `http://${ELM_HOST}:${ELM_PORT}`);
+engine.start();
+
 // --- ELM FPS Logger (24-hour average) ---
 const fpsReadings = [];
 const FPS_SAMPLE_INTERVAL = 5 * 60 * 1000; // sample every 5 minutes
@@ -286,6 +292,71 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(monitor.getAll()));
     }, 3000);
+    return;
+  }
+
+  // --- Scene Engine API ---
+  if (cleanUrl === '/api/scenes' && req.method === 'GET') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(engine.config.scenes));
+    return;
+  }
+
+  if (cleanUrl === '/api/scenes/status' && req.method === 'GET') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(engine.getStatus()));
+    return;
+  }
+
+  if (req.url.startsWith('/api/scenes/') && req.url.includes('/activate') && req.method === 'POST') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    const parts = req.url.split('?')[0].split('/');
+    const sceneId = parts[3]; // /api/scenes/{id}/activate
+    const urlParams = new URLSearchParams(req.url.split('?')[1] || '');
+    const duration = parseInt(urlParams.get('duration') || '0');
+    engine.activateScene(sceneId, duration).then(result => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    });
+    return;
+  }
+
+  if (cleanUrl === '/api/scenes/reload' && req.method === 'POST') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(engine.reloadConfig()));
+    return;
+  }
+
+  if (cleanUrl === '/api/triggers' && req.method === 'GET') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(engine.config.triggers));
+    return;
+  }
+
+  if (req.url.startsWith('/api/triggers/') && req.url.includes('/fire') && req.method === 'POST') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    const triggerId = req.url.split('?')[0].split('/')[3]; // /api/triggers/{id}/fire
+    const result = engine.triggerManual(triggerId);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (cleanUrl === '/api/triggers/override/clear' && req.method === 'POST') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(engine.clearManualOverride()));
+    return;
+  }
+
+  if (cleanUrl === '/api/astro' && req.method === 'GET') {
+    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(engine.getAstroTimes()));
     return;
   }
 

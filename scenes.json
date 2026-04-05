@@ -1,0 +1,81 @@
+{
+  "venue": {
+    "name": "Loop Atlanta",
+    "latitude": 33.7490,
+    "longitude": -84.3880,
+    "timezone": "America/New_York"
+  },
+
+  "scenes": {
+    "warm-wash": {
+      "name": "Warm Wash",
+      "description": "Amber-toned wash across all stages",
+      "stages": {
+        "*": {
+          "media": 3,
+          "intensity": 0.85,
+          "speed": 0.5,
+          "color": { "red": 1.0, "green": 0.6, "blue": 0.2 }
+        }
+      }
+    },
+    "blackout": {
+      "name": "Blackout",
+      "description": "All stages to zero",
+      "stages": {
+        "*": {
+          "intensity": 0.0
+        }
+      }
+    }
+  },
+
+  "triggers": {
+    "test-blackout": {
+      "type": "clock",
+      "scene": "blackout",
+      "transition": { "duration": 5 },
+      "schedule": {
+        "time": "23:00",
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+      },
+      "priority": 20,
+      "enabled": false
+    },
+    "sunset-wash": {
+      "type": "astro",
+      "scene": "warm-wash",
+      "transition": { "duration": 1200 },
+      "astro": {
+        "event": "goldenHour",
+        "offset": 0
+      },
+      "priority": 30,
+      "enabled": false
+    },
+    "manual-blackout": {
+      "type": "manual",
+      "scene": "blackout",
+      "transition": { "duration": 3 },
+      "manual": {
+        "label": "Blackout",
+        "icon": "moon",
+        "color": "#1a1a2e"
+      },
+      "priority": 100,
+      "enabled": true
+    },
+    "manual-warm-wash": {
+      "type": "manual",
+      "scene": "warm-wash",
+      "transition": { "duration": 10 },
+      "manual": {
+        "label": "Warm Wash",
+        "icon": "sun",
+        "color": "#ff9500"
+      },
+      "priority": 100,
+      "enabled": true
+    }
+  }
+}
