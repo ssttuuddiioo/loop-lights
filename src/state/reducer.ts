@@ -9,6 +9,7 @@ export interface AppState {
   masterLevel: number;
   blackout: boolean;
   preBlackoutLevel: number;
+  preBlackoutStages: number[];
   dirtyUntil: Record<number, number>;
   masterDirtyUntil: number;
 
@@ -43,6 +44,7 @@ export const initialState: AppState = {
   masterLevel: 100,
   blackout: false,
   preBlackoutLevel: 100,
+  preBlackoutStages: [],
   dirtyUntil: {},
   masterDirtyUntil: 0,
 
@@ -125,11 +127,28 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'TOGGLE_BLACKOUT': {
       const nowBlackout = !state.blackout;
       const dirty = Date.now() + DIRTY_DURATION_MS;
+      const dirtyAll: Record<number, number> = { ...state.dirtyUntil };
+      state.stages.forEach((_, i) => { dirtyAll[i] = dirty; });
+
       if (nowBlackout) {
+        // Save current intensities, then zero everything
         const pre = state.masterLevel > 0 ? state.masterLevel : (state.preBlackoutLevel || 100);
-        return { ...state, blackout: true, preBlackoutLevel: pre, masterLevel: 0, masterDirtyUntil: dirty };
+        const savedStages = state.stages.map(s => s.intensity);
+        const stages = state.stages.map(s => ({ ...s, intensity: 0 }));
+        return {
+          ...state, blackout: true, preBlackoutLevel: pre, preBlackoutStages: savedStages,
+          masterLevel: 0, masterDirtyUntil: dirty, stages, dirtyUntil: dirtyAll,
+        };
       } else {
-        return { ...state, blackout: false, masterLevel: state.preBlackoutLevel || 100, masterDirtyUntil: dirty };
+        // Restore saved intensities
+        const saved = state.preBlackoutStages;
+        const stages = state.stages.map((s, i) => ({
+          ...s, intensity: saved[i] ?? s.baseIntensity ?? 100,
+        }));
+        return {
+          ...state, blackout: false, masterLevel: state.preBlackoutLevel || 100,
+          masterDirtyUntil: dirty, stages, dirtyUntil: dirtyAll,
+        };
       }
     }
 

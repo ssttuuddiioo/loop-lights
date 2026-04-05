@@ -1,26 +1,39 @@
 import { useCallback } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postMasterIntensity } from '../../api/settings';
+import { postStageIntensity } from '../../api/stages';
 import '@material/web/button/filled-button.js';
 
 export function BlackoutButton() {
-  const { blackout, preBlackoutLevel } = useAppState();
+  const { blackout, preBlackoutLevel, preBlackoutStages, stages } = useAppState();
   const dispatch = useAppDispatch();
 
   const onClick = useCallback(async () => {
+    // Capture current state before dispatch changes it
+    const stageSnapshot = stages.map(s => ({ id: s.id, intensity: s.intensity }));
+    const savedIntensities = preBlackoutStages;
+
     dispatch({ type: 'TOGGLE_BLACKOUT' });
     try {
       if (!blackout) {
-        // Entering blackout → send 0 to ELM
-        await postMasterIntensity(0);
+        // Entering blackout → zero all stages + master
+        await Promise.all([
+          postMasterIntensity(0),
+          ...stageSnapshot.map(s => postStageIntensity(s.id, 0)),
+        ]);
       } else {
-        // Restoring → send pre-blackout level to ELM
-        await postMasterIntensity(preBlackoutLevel / 100);
+        // Restoring → restore all stages + master
+        await Promise.all([
+          postMasterIntensity(preBlackoutLevel / 100),
+          ...stageSnapshot.map((s, i) =>
+            postStageIntensity(s.id, (savedIntensities[i] ?? 100) / 100)
+          ),
+        ]);
       }
     } catch (err) {
       console.error('Blackout toggle failed:', err);
     }
-  }, [blackout, preBlackoutLevel, dispatch]);
+  }, [blackout, preBlackoutLevel, preBlackoutStages, stages, dispatch]);
 
   return (
     <md-filled-button
