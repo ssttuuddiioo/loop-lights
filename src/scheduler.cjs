@@ -113,7 +113,9 @@ class SceneEngine {
     try {
       const data = await this._elmGet('/elm/stages');
       const parsed = JSON.parse(data);
-      this._stageGuids = parsed.map(s => s.guid || s.id || s.name);
+      // ELM returns { stages: ["NAME", ...] } — extract the array
+      const list = Array.isArray(parsed) ? parsed : (parsed.stages || []);
+      this._stageGuids = list.map(s => typeof s === 'string' ? s : (s.guid || s.id || s.name));
       this._stageGuidsTime = Date.now();
       return this._stageGuids;
     } catch (err) {
