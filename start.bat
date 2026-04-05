@@ -34,6 +34,14 @@ REM --- Step 3: Build the app ---
 echo  [3/6] Building the app...
 echo.
 call npm run build
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo  !! BUILD FAILED !! Check errors above.
+    echo  Server will NOT start with broken build.
+    echo.
+    pause
+    exit /b 1
+)
 echo.
 timeout /t 2 /nobreak >nul
 
@@ -53,16 +61,20 @@ echo   Shaders deployed.
 echo.
 timeout /t 2 /nobreak >nul
 
+REM --- Create logs directory + write startup timestamp ---
+if not exist "%~dp0logs" mkdir "%~dp0logs"
+echo [%date% %time%] Dimly starting up >> "%~dp0logs\startup.log"
+
 REM --- Step 5: Start the controller server ---
 echo  [5/6] Starting Stage Controller on port 4200...
 echo.
-start "Dimly Server" cmd /c "title Dimly Server && node "%~dp0serve.cjs""
+start "Dimly Server" cmd /c "title Dimly Server && node "%~dp0serve.cjs" >> "%~dp0logs\server.log" 2>&1"
 timeout /t 3 /nobreak >nul
 
 REM --- Step 6: Start Cloudflare Tunnel ---
 echo  [6/6] Starting Cloudflare Tunnel (ctrl.dimly.app)...
 echo.
-start "Dimly Tunnel" cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly"
+start "Dimly Tunnel" cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly >> "%~dp0logs\tunnel.log" 2>&1"
 timeout /t 5 /nobreak >nul
 
 REM --- Done ---
@@ -73,6 +85,7 @@ echo.
 echo   Local:   http://localhost:4200
 echo   Remote:  https://ctrl.dimly.app
 echo   Shaders: deployed to %ELM_SHADERS%
+echo   Logs:    %~dp0logs\
 echo  ========================================
 echo.
 echo  This window can be closed. Server and
