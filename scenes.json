@@ -31,27 +31,16 @@
   },
 
   "triggers": {
-    "test-blackout": {
+    "nightly-blackout": {
       "type": "clock",
       "scene": "blackout",
       "transition": { "duration": 0 },
       "schedule": {
-        "time": "13:35",
+        "time": "23:00",
         "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
       },
       "priority": 20,
-      "enabled": true
-    },
-    "test-warm-on": {
-      "type": "clock",
-      "scene": "warm-wash",
-      "transition": { "duration": 0 },
-      "schedule": {
-        "time": "13:36",
-        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-      },
-      "priority": 20,
-      "enabled": true
+      "enabled": false
     },
     "sunset-wash": {
       "type": "astro",
