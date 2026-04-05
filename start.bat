@@ -8,8 +8,15 @@ echo   DIMLY - Stage Controller Startup
 echo  ========================================
 echo.
 
+REM --- Step 0: Kill any existing Dimly processes ---
+echo  [0/6] Cleaning up old processes...
+echo.
+taskkill /FI "WINDOWTITLE eq Dimly Server" /F >nul 2>&1
+taskkill /FI "WINDOWTITLE eq Dimly Tunnel" /F >nul 2>&1
+timeout /t 2 /nobreak >nul
+
 REM --- Step 1: Pull latest from git ---
-echo  [1/4] Pulling latest from git...
+echo  [1/6] Pulling latest from git...
 echo.
 cd /d "%~dp0"
 git pull
@@ -25,6 +32,8 @@ timeout /t 2 /nobreak >nul
 
 REM --- Step 3: Build the app ---
 echo  [3/6] Building the app...
+echo.
+call npm run build
 echo.
 timeout /t 2 /nobreak >nul
 
