@@ -36,7 +36,7 @@
       "scene": "blackout",
       "transition": { "duration": 0 },
       "schedule": {
-        "time": "13:26",
+        "time": "13:35",
         "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
       },
       "priority": 20,
@@ -47,7 +47,7 @@
       "scene": "warm-wash",
       "transition": { "duration": 0 },
       "schedule": {
-        "time": "13:30",
+        "time": "13:36",
         "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
       },
       "priority": 20,
