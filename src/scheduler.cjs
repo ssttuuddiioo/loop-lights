@@ -80,14 +80,15 @@ class SceneEngine {
       if (stageConfig.intensity !== undefined) params.intensity = stageConfig.intensity;
       if (stageConfig.speed !== undefined) params.speed = stageConfig.speed;
       if (stageConfig.color) {
-        if (stageConfig.color.red !== undefined) params.red = stageConfig.color.red;
-        if (stageConfig.color.green !== undefined) params.green = stageConfig.color.green;
-        if (stageConfig.color.blue !== undefined) params.blue = stageConfig.color.blue;
+        // ELM expects 0-255 integers; config uses 0.0-1.0 floats
+        if (stageConfig.color.red !== undefined) params.red = Math.round(stageConfig.color.red * 255);
+        if (stageConfig.color.green !== undefined) params.green = Math.round(stageConfig.color.green * 255);
+        if (stageConfig.color.blue !== undefined) params.blue = Math.round(stageConfig.color.blue * 255);
       }
-      if (transitionDuration > 0) params.transition = transitionDuration;
+      if (transitionDuration > 0) params.transitionDuration = transitionDuration;
 
       const qs = Object.entries(params)
-        .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toFixed(4) : v}`)
+        .map(([k, v]) => `${k}=${v}`)
         .join('&');
 
       if (qs) {
@@ -300,6 +301,7 @@ class SceneEngine {
         port: parsed.port,
         path: urlPath,
         method: 'POST',
+        headers: { 'Content-Length': '0' },
         timeout: 5000
       }, (res) => {
         let data = '';
