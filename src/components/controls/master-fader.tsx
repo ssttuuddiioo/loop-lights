@@ -2,9 +2,10 @@ import { useEffect } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { usePointerHorizontal } from '../../hooks/use-pointer-horizontal';
 import { postMasterIntensity } from '../../api/settings';
+import { postStageIntensity } from '../../api/stages';
 
 export function MasterFader() {
-  const { masterLevel } = useAppState();
+  const { masterLevel, stages } = useAppState();
   const dispatch = useAppDispatch();
 
   const { handlers, setCurrentValue } = usePointerHorizontal({
@@ -12,7 +13,14 @@ export function MasterFader() {
       dispatch({ type: 'SET_MASTER_LEVEL', level: value });
     },
     onDragEnd: (finalValue) => {
-      postMasterIntensity(finalValue / 100).catch(console.error);
+      const masterFraction = finalValue / 100;
+      Promise.all([
+        postMasterIntensity(masterFraction),
+        ...stages.map(s => {
+          const scaled = (s.baseIntensity * masterFraction) / 100;
+          return postStageIntensity(s.id, scaled);
+        }),
+      ]).catch(console.error);
     },
   });
 
