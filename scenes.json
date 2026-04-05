@@ -34,13 +34,13 @@
     "test-blackout": {
       "type": "clock",
       "scene": "blackout",
-      "transition": { "duration": 5 },
+      "transition": { "duration": 0 },
       "schedule": {
-        "time": "23:00",
+        "time": "13:05",
         "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
       },
       "priority": 20,
-      "enabled": false
+      "enabled": true
     },
     "sunset-wash": {
       "type": "astro",
