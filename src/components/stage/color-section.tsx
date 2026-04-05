@@ -28,42 +28,26 @@ export const ColorSection = memo(function ColorSection({ stage, stageIndex, onOp
   }, [dispatch, stageIndex, stage.id]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '100%' }}>
-      <div style={{ fontSize: '9px', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--app-muted)', alignSelf: 'flex-start' }}>
-        Color
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'center' }}>
-        {SWATCHES.map(c => (
-          <ColorSwatch
-            key={c}
-            color={c}
-            selected={c === stage.color}
-            onClick={() => setColor(c)}
-          />
-        ))}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '100%' }}>
-        <input
-          type="color"
-          value={stage.color}
-          onInput={(e) => setColor((e.target as HTMLInputElement).value)}
-          style={{
-            WebkitAppearance: 'none',
-            width: '28px', height: '22px',
-            border: '1px solid var(--app-border2)', borderRadius: '4px',
-            background: 'none', cursor: 'pointer', padding: '1px', flexShrink: 0,
-          }}
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
+      {SWATCHES.map(c => (
+        <ColorSwatch
+          key={c}
+          color={c}
+          selected={c === stage.color}
+          onClick={() => setColor(c)}
         />
-        <span
-          onClick={onOpenModal}
-          style={{
-            fontSize: '10px', color: 'var(--app-muted)', letterSpacing: '0.04em',
-            cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
-          }}
-        >
-          {stage.color}
-        </span>
-      </div>
+      ))}
+      <input
+        type="color"
+        value={stage.color}
+        onInput={(e) => setColor((e.target as HTMLInputElement).value)}
+        style={{
+          WebkitAppearance: 'none',
+          width: '22px', height: '22px',
+          border: '1px solid var(--app-border2)', borderRadius: '4px',
+          background: 'none', cursor: 'pointer', padding: '1px', flexShrink: 0,
+        }}
+      />
     </div>
   );
 });

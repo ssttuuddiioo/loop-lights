@@ -32,9 +32,9 @@ export function MasterFader() {
   const pct = Math.max(0, Math.min(100, masterLevel));
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 14px', background: 'var(--app-surface2)', border: '1px solid var(--app-border)', borderRadius: '8px' }}>
-      <span style={{ fontSize: '10px', color: 'var(--app-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
-        Master
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 14px', background: 'var(--app-surface2)', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)' }}>
+      <span style={{ fontSize: '10px', color: 'var(--app-muted)', letterSpacing: '0.04em' }}>
+        Master Intensity
       </span>
       <div
         class="no-select master-track"
@@ -62,7 +62,7 @@ export function MasterFader() {
         <div style={{
           position: 'absolute', left: 0, top: '50%', height: '10px',
           transform: 'translateY(-50%)', background: 'var(--app-accent)', borderRadius: '999px',
-          width: `${pct}%`, boxShadow: '0 0 8px rgba(232,255,71,0.35)',
+          width: `${pct}%`, boxShadow: '0 0 8px rgba(255,255,255,0.15)',
         }} />
         {/* Thumb */}
         <div style={{
@@ -70,8 +70,8 @@ export function MasterFader() {
           width: '24px', height: '24px',
           transform: 'translate(-50%, -50%)', borderRadius: '50%',
           background: 'var(--app-accent)',
-          border: '2px solid rgba(10,10,11,0.95)',
-          boxShadow: '0 0 10px rgba(232,255,71,0.5)',
+          border: '2px solid var(--app-bg)',
+          boxShadow: '0 0 8px rgba(255,255,255,0.2)',
         }} />
       </div>
       <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--app-accent)', minWidth: '36px', textAlign: 'right' as const }}>

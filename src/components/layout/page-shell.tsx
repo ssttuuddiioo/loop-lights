@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useAppDispatch } from '../../state/context';
 import { useSyncEngine } from '../../hooks/use-sync-engine';
+import { AppNav } from '../nav/app-nav';
 import { GlobalToolbar } from './global-toolbar';
 import { PreviewStrip } from './preview-strip';
 
@@ -35,10 +36,19 @@ export function PageShell({ children }: { children: ComponentChildren }) {
   }, [dispatch]);
 
   return (
-    <>
-      <GlobalToolbar />
-      <main>{children}</main>
-      <PreviewStrip />
-    </>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <AppNav />
+      <div style={{
+        marginLeft: 'var(--sidebar-width)',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+      }}>
+        <GlobalToolbar />
+        <main style={{ flex: 1, overflow: 'auto' }}>{children}</main>
+        <PreviewStrip />
+      </div>
+    </div>
   );
 }

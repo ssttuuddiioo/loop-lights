@@ -5,13 +5,11 @@ import { ZoneSidebar } from './zone-sidebar';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
-const BG_COLOR = 0x080808;
+const BG_COLOR = 0x1a1a22;
 const HOVER_BOOST = 0.3;
-const FLOOR_COLOR = 0x111111;
+const FLOOR_COLOR = 0xe8e4df; // eggshell
+
 
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
@@ -40,18 +38,15 @@ export function SpatialView() {
 
     // ── Renderer ────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(1);
     renderer.setClearColor(BG_COLOR);
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.shadowMap.enabled = false;
     container.appendChild(renderer.domElement);
 
     // ── Scene ───────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(BG_COLOR, 0.012);
 
     // ── Camera ──────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(
@@ -71,30 +66,15 @@ export function SpatialView() {
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.3;
 
-    // ── Post-processing (bloom) ─────────────────────────────────────
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(
-      new THREE.Vector2(container.clientWidth, container.clientHeight),
-      1.0,   // strength
-      0.6,   // radius
-      0.2,   // threshold
-    );
-    composer.addPass(bloom);
 
     // ── Lighting ────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xffffff, 0.06));
+    // Global illumination: hemisphere light for soft fill
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.1);
+    scene.add(hemi);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.05));
 
-    const dir = new THREE.DirectionalLight(0xffffff, 0.15);
-    dir.position.set(0, 15, 0);
-    dir.castShadow = true;
-    dir.shadow.mapSize.set(1024, 1024);
-    dir.shadow.camera.near = 0.5;
-    dir.shadow.camera.far = 50;
-    dir.shadow.camera.left = -20;
-    dir.shadow.camera.right = 20;
-    dir.shadow.camera.top = 20;
-    dir.shadow.camera.bottom = -20;
+    const dir = new THREE.DirectionalLight(0xffffff, 0.01);
+    dir.position.set(0, 35, 0);
     scene.add(dir);
 
     // ── Floor (matte) ───────────────────────────────────────────────
@@ -107,7 +87,6 @@ export function SpatialView() {
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.05;
-    floor.receiveShadow = true;
     scene.add(floor);
 
     // ── Raycaster ───────────────────────────────────────────────────
@@ -115,14 +94,15 @@ export function SpatialView() {
     const pointer = new THREE.Vector2(-999, -999);
 
     const ctx: any = {
-      renderer, composer, scene, camera, controls,
+      renderer, scene, camera, controls,
       zoneMeshes: [] as THREE.Mesh[][],
       zoneHitBoxes: [] as THREE.Mesh[],
-      zoneLights: [] as THREE.PointLight[],
+      zoneLights: [] as THREE.PointLight[][],
       zoneCount: 0,
       raycaster, pointer,
       hoveredZone: -1,
       animId: 0,
+      disposed: false,
     };
     sceneRef.current = ctx;
 
@@ -163,17 +143,34 @@ export function SpatialView() {
             });
             mesh.material = mat;
             mesh.userData.zoneIndex = z;
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
           }
           ctx.zoneMeshes.push(meshes);
 
-          // Point light per zone
-          const lightRange = Math.max(zoneSize.x, zoneSize.z) * 4;
-          const light = new THREE.PointLight(0x000000, 0, lightRange);
-          light.position.set(zoneCenter.x, zoneCenter.y + zoneSize.y + 2, zoneCenter.z);
-          scene.add(light);
-          ctx.zoneLights.push(light);
+          // Distribute point lights along the zone shape
+          const maxSpan = Math.max(zoneSize.x, zoneSize.z);
+          const isLong = maxSpan > Math.min(zoneSize.x, zoneSize.z) * 2;
+          const lightCount = isLong ? Math.min(2, Math.ceil(maxSpan / 3)) : 1;
+          const lightY = zoneCenter.y + zoneSize.y + 1.5;
+          const lightRange = maxSpan * 2.5 / lightCount;
+          const zoneLightGroup: THREE.PointLight[] = [];
+
+          // Determine the long axis
+          const alongX = zoneSize.x >= zoneSize.z;
+          const span = alongX ? zoneSize.x : zoneSize.z;
+
+          for (let li = 0; li < lightCount; li++) {
+            const t = lightCount === 1 ? 0 : (li / (lightCount - 1)) - 0.5; // -0.5 to 0.5
+            const light = new THREE.PointLight(0x000000, 0, lightRange);
+            light.position.set(
+              zoneCenter.x + (alongX ? t * span : 0),
+              lightY,
+              zoneCenter.z + (alongX ? 0 : t * span),
+            );
+            scene.add(light);
+            zoneLightGroup.push(light);
+          }
+          ctx.zoneLights.push(zoneLightGroup);
+
 
           // Invisible hit box — padded bounding box for easier clicking
           const padding = 0.5;
@@ -242,12 +239,16 @@ export function SpatialView() {
     // ── Animation loop ──────────────────────────────────────────────
     const _color = new THREE.Color();
 
-    function animate() {
+    let lastFrame = 0;
+    function animate(time: number) {
+      if (ctx.disposed) return;
       ctx.animId = requestAnimationFrame(animate);
+      // Throttle to ~30fps
+      if (time - lastFrame < 33) return;
+      lastFrame = time;
       controls.update();
 
       const s = stateRef.current;
-
       for (let z = 0; z < ctx.zoneMeshes.length; z++) {
         const stage = s.stages[z];
         if (!stage) continue;
@@ -258,15 +259,19 @@ export function SpatialView() {
         for (const mesh of ctx.zoneMeshes[z]) {
           const mat = mesh.material as THREE.MeshStandardMaterial;
           mat.emissive.set(stage.color);
-          mat.emissiveIntensity = intensity + (isHovered ? HOVER_BOOST : 0);
+          mat.emissiveIntensity = intensity * 2 + (isHovered ? HOVER_BOOST : 0);
         }
 
-        const light = ctx.zoneLights[z];
-        if (light) {
+        const lights = ctx.zoneLights[z];
+        if (lights) {
           _color.set(stage.color);
-          light.color.copy(_color);
-          light.intensity = intensity * 5;
+          const perLight = (intensity * 50) / lights.length;
+          for (const light of lights) {
+            light.color.copy(_color);
+            light.intensity = perLight;
+          }
         }
+
 
         const mid = stage.mediaId;
         if (mid && mid !== loadedMediaIds[z]) {
@@ -289,16 +294,15 @@ export function SpatialView() {
         renderer.domElement.style.cursor = newHovered >= 0 ? 'pointer' : 'default';
       }
 
-      composer.render();
+      renderer.render(scene, camera);
     }
-    animate();
+    animate(0);
 
     // ── Resize ──────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
       const w = container.clientWidth;
       const h = container.clientHeight;
       renderer.setSize(w, h);
-      composer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     });
@@ -349,6 +353,7 @@ export function SpatialView() {
 
     // ── Cleanup ─────────────────────────────────────────────────────
     return () => {
+      ctx.disposed = true;
       cancelAnimationFrame(ctx.animId);
       ro.disconnect();
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
@@ -364,8 +369,7 @@ export function SpatialView() {
         hb.geometry.dispose();
         (hb.material as THREE.Material).dispose();
       });
-      ctx.zoneLights.forEach((l: THREE.PointLight) => l.dispose());
-      composer.dispose();
+      ctx.zoneLights.forEach((group: THREE.PointLight[]) => group.forEach(l => l.dispose()));
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -377,7 +381,7 @@ export function SpatialView() {
   const closeModal = useCallback(() => setSelectedZone(null), []);
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: '#080808' }}>
+    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: '#1a1a22' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
       {loading && !error && (

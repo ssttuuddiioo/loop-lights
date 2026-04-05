@@ -1,23 +1,23 @@
 :root {
-  /* Surface colors — Geist dark palette */
-  --md-sys-color-surface: #000000;
-  --md-sys-color-surface-container-lowest: #000000;
-  --md-sys-color-surface-container-low: #0a0a0a;
-  --md-sys-color-surface-container: #111111;
-  --md-sys-color-surface-container-high: #1a1a1a;
-  --md-sys-color-surface-container-highest: #222222;
-  --md-sys-color-surface-dim: #000000;
-  --md-sys-color-surface-bright: #222222;
-  --md-sys-color-surface-tint: #ededed;
+  /* Surface colors — Flat Calm palette */
+  --md-sys-color-surface: #13131a;
+  --md-sys-color-surface-container-lowest: #13131a;
+  --md-sys-color-surface-container-low: #1a1a26;
+  --md-sys-color-surface-container: #1e1e2e;
+  --md-sys-color-surface-container-high: #252535;
+  --md-sys-color-surface-container-highest: #2e2e40;
+  --md-sys-color-surface-dim: #13131a;
+  --md-sys-color-surface-bright: #2e2e40;
+  --md-sys-color-surface-tint: #e0e0e8;
 
   /* On-surface */
-  --md-sys-color-on-surface: #ededed;
-  --md-sys-color-on-surface-variant: #888888;
+  --md-sys-color-on-surface: #e0e0e8;
+  --md-sys-color-on-surface-variant: #7a7a8e;
 
   /* Primary */
   --md-sys-color-primary: #ffffff;
-  --md-sys-color-on-primary: #000000;
-  --md-sys-color-primary-container: rgba(255, 255, 255, 0.1);
+  --md-sys-color-on-primary: #13131a;
+  --md-sys-color-primary-container: rgba(255, 255, 255, 0.08);
   --md-sys-color-on-primary-container: #ffffff;
 
   /* Error / Danger */
@@ -26,39 +26,43 @@
   --md-sys-color-error-container: rgba(255, 77, 77, 0.12);
   --md-sys-color-on-error-container: #ff4d4d;
 
-  /* Outline — Geist border style */
-  --md-sys-color-outline: rgba(255, 255, 255, 0.15);
-  --md-sys-color-outline-variant: rgba(255, 255, 255, 0.08);
+  /* Outline */
+  --md-sys-color-outline: rgba(255, 255, 255, 0.12);
+  --md-sys-color-outline-variant: rgba(255, 255, 255, 0.06);
 
   /* Inverse */
-  --md-sys-color-inverse-surface: #ededed;
-  --md-sys-color-inverse-on-surface: #000000;
-  --md-sys-color-inverse-primary: #000000;
+  --md-sys-color-inverse-surface: #e0e0e8;
+  --md-sys-color-inverse-on-surface: #13131a;
+  --md-sys-color-inverse-primary: #13131a;
 
   /* Secondary */
-  --md-sys-color-secondary: #888888;
-  --md-sys-color-on-secondary: #000000;
-  --md-sys-color-secondary-container: #1a1a1a;
-  --md-sys-color-on-secondary-container: #ededed;
+  --md-sys-color-secondary: #7a7a8e;
+  --md-sys-color-on-secondary: #13131a;
+  --md-sys-color-secondary-container: #252535;
+  --md-sys-color-on-secondary-container: #e0e0e8;
 
-  /* App-specific tokens — Geist-inspired */
-  --app-bg: #000000;
-  --app-surface: #0a0a0a;
-  --app-surface2: #111111;
-  --app-surface3: #1a1a1a;
-  --app-border: rgba(255, 255, 255, 0.08);
-  --app-border2: rgba(255, 255, 255, 0.15);
-  --app-text: #ededed;
-  --app-muted: #666666;
-  --app-faint: rgba(255, 255, 255, 0.06);
+  /* App-specific tokens — Flat Calm */
+  --app-bg: #13131a;
+  --app-surface: #1e1e2e;
+  --app-surface2: #252535;
+  --app-surface3: #2e2e40;
+  --app-border: rgba(255, 255, 255, 0.06);
+  --app-border2: rgba(255, 255, 255, 0.12);
+  --app-text: #e0e0e8;
+  --app-muted: #7a7a8e;
+  --app-faint: rgba(255, 255, 255, 0.04);
   --app-accent: #ffffff;
-  --app-accent-dim: rgba(255, 255, 255, 0.1);
-  --app-success: #0070f3;
-  --app-danger: #ee0000;
-  --app-radius: 8px;
-  --app-radius-sm: 6px;
+  --app-accent-dim: rgba(255, 255, 255, 0.08);
+  --app-success: #4ade80;
+  --app-danger: #ff4d4d;
+  --app-radius: 12px;
+  --app-radius-sm: 8px;
 
-  /* Geist spacing scale */
+  /* Sidebar */
+  --sidebar-width: 80px;
+  --sidebar-bg: #16161f;
+
+  /* Spacing scale */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

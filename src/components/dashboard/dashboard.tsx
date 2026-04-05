@@ -1,6 +1,8 @@
 import { useMemo } from 'preact/hooks';
-import { useLocation } from 'wouter-preact';
-import { useAppState } from '../../state/context';
+import { useAppState, useAppDispatch } from '../../state/context';
+import { postStageIntensity } from '../../api/stages';
+import { ColorPanel } from '../modals/color-modal';
+import { MediaPanel } from '../modals/media-modal';
 
 // --- System Status Header ---
 
@@ -42,183 +44,173 @@ function StatusItem({ label, value, color }: { label: string; value: string; col
   );
 }
 
-// --- Stage Status Grid ---
+// --- Stage Card ---
 
-function StageStatusGrid() {
-  const { stages, mediaSlots, masterLevel, blackout } = useAppState();
-  const [, navigate] = useLocation();
+function DashboardCard({ index }: { index: number }) {
+  const { stages, masterLevel, blackout, mediaSlots } = useAppState();
+  const dispatch = useAppDispatch();
+  const stage = stages[index];
+  if (!stage) return null;
 
-  const mediaMap = useMemo(() => {
-    const map = new Map<string | number, string>();
-    for (const slot of mediaSlots) {
-      map.set(slot.id, slot.name);
-    }
-    return map;
-  }, [mediaSlots]);
+  const effective = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
+  const isOn = stage.intensity > 0;
+  const currentSlot = mediaSlots.find(s => String(s.id) === String(stage.mediaId));
+  const mediaName = currentSlot?.name || 'None';
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-      gap: '12px',
-    }}>
-      {stages.map((stage, i) => {
-        const effective = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
-        const mediaName = mediaMap.get(stage.mediaId) || (stage.mediaId ? `Media ${stage.mediaId}` : 'None');
+    <div
+      onClick={() => {
+        const newIntensity = isOn ? 0 : (stage.baseIntensity > 0 ? stage.baseIntensity : 100);
+        dispatch({ type: 'SET_STAGE_INTENSITY', index, value: newIntensity });
+        postStageIntensity(stage.id, newIntensity / 100).catch(console.error);
+      }}
+      style={{
+        background: 'var(--app-surface)',
+        border: '1px solid var(--app-border)',
+        borderRadius: 'var(--app-radius)',
+        padding: '20px 16px 24px',
+        cursor: 'pointer',
+        transition: 'border-color 0.15s',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Top accent */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+        background: stage.color, opacity: effective / 100,
+      }} />
 
-        return (
-          <div
-            key={stage.id}
-            onClick={() => navigate('/mixer')}
-            style={{
-              background: 'var(--app-surface)',
-              border: '1px solid var(--app-border)',
-              borderRadius: 'var(--app-radius)',
-              padding: '14px 16px',
-              cursor: 'pointer',
-              transition: 'border-color 0.15s',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--app-border2)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--app-border)'; }}
-          >
-            {/* Top accent */}
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-              background: stage.color, opacity: effective / 100,
-            }} />
-
-            {/* Header row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}>
-                  {stage.name}
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--app-muted)', marginTop: '1px' }}>
-                  ZONE {String(i + 1).padStart(2, '0')}
-                </div>
-              </div>
-              {/* Color swatch */}
-              <div style={{
-                width: '14px', height: '14px', borderRadius: '3px',
-                background: stage.color,
-                opacity: effective > 0 ? 1 : 0.3,
-                border: '1px solid var(--app-border2)',
-                flexShrink: 0,
-              }} />
-            </div>
-
-            {/* Intensity bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <div style={{
-                flex: 1, height: '6px',
-                background: 'var(--app-border)',
-                borderRadius: '3px',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${effective}%`, height: '100%',
-                  background: stage.color,
-                  borderRadius: '3px',
-                  transition: 'width 0.2s',
-                }} />
-              </div>
-              <span style={{
-                fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 500,
-                color: effective > 0 ? 'var(--app-text)' : 'var(--app-muted)',
-                minWidth: '32px', textAlign: 'right' as const,
-              }}>
-                {effective}%
-              </span>
-            </div>
-
-            {/* Media name */}
-            <div style={{
-              fontSize: '11px', color: 'var(--app-muted)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {mediaName}
-            </div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}>
+            {stage.name}
           </div>
-        );
-      })}
+          <div style={{ fontSize: '10px', color: 'var(--app-muted)', marginTop: '1px' }}>
+            ZONE {String(index + 1).padStart(2, '0')}
+          </div>
+        </div>
+        <span style={{
+          padding: '3px 10px', borderRadius: '12px',
+          fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
+          letterSpacing: '0.04em',
+          background: isOn ? stage.color : 'var(--app-surface3)',
+          color: isOn ? '#000' : 'var(--app-muted)',
+          border: `1px solid ${isOn ? stage.color : 'var(--app-border2)'}`,
+          transition: 'all 0.15s',
+        }}>
+          {isOn ? 'ON' : 'OFF'}
+        </span>
+      </div>
+
+      {/* Intensity slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <input
+          type="range" min={0} max={100} value={stage.intensity}
+          onClick={(e) => e.stopPropagation()}
+          onInput={(e) => {
+            const val = parseInt((e.target as HTMLInputElement).value);
+            dispatch({ type: 'SET_STAGE_INTENSITY', index, value: val });
+          }}
+          onChange={(e) => {
+            const val = parseInt((e.target as HTMLInputElement).value);
+            postStageIntensity(stage.id, val / 100).catch(console.error);
+          }}
+          style={{ flex: 1, height: '6px', accentColor: stage.color, cursor: 'pointer' }}
+        />
+        <span style={{
+          fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 500,
+          color: effective > 0 ? 'var(--app-text)' : 'var(--app-muted)',
+          minWidth: '32px', textAlign: 'right' as const,
+        }}>
+          {effective}%
+        </span>
+      </div>
+
+      {/* Color + Media buttons */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); dispatch({ type: 'OPEN_COLOR_MODAL', index }); }}
+          style={{
+            all: 'unset', cursor: 'pointer',
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            padding: '6px', borderRadius: 'var(--app-radius-sm)',
+            background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--app-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><circle cx="12" cy="7" r="2" fill={stage.color} stroke={stage.color} />
+            <circle cx="7" cy="14" r="2" fill="#ff4d4d" stroke="#ff4d4d" /><circle cx="17" cy="14" r="2" fill="#4780ff" stroke="#4780ff" />
+          </svg>
+          <span style={{ fontSize: '10px', color: 'var(--app-muted)', fontFamily: 'var(--font-sans)' }}>Color</span>
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); dispatch({ type: 'OPEN_MEDIA_MODAL', index }); }}
+          style={{
+            all: 'unset', cursor: 'pointer',
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            padding: '6px', borderRadius: 'var(--app-radius-sm)',
+            background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--app-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M2 14l5-5 4 4 3-3 8 8" />
+            <circle cx="15" cy="9" r="2" />
+          </svg>
+          <span style={{ fontSize: '10px', color: 'var(--app-muted)', fontFamily: 'var(--font-sans)' }}>{mediaName}</span>
+        </button>
+      </div>
     </div>
   );
 }
 
-// --- SVG Intensity Chart ---
+// --- Stage Grid with inline panels ---
 
-function IntensityChart() {
-  const { stages, masterLevel, blackout } = useAppState();
+function StageStatusGrid() {
+  const { stages, colorModalStageIndex, mediaModalStageIndex } = useAppState();
 
-  const barWidth = 48;
-  const barGap = 12;
-  const chartHeight = 140;
-  const labelHeight = 28;
-  const topPad = 8;
-  const totalWidth = stages.length * (barWidth + barGap) - barGap;
-  const svgWidth = totalWidth + 40; // left padding for axis
-  const svgHeight = chartHeight + labelHeight + topPad;
-  const originX = 32;
+  const panelIndex = colorModalStageIndex ?? mediaModalStageIndex ?? -1;
+  const panelRow = panelIndex >= 0 ? Math.floor(panelIndex / 3) : -1;
+
+  const items: preact.ComponentChildren[] = [];
+
+  for (let rowStart = 0; rowStart < stages.length; rowStart += 3) {
+    const rowEnd = Math.min(rowStart + 3, stages.length);
+
+    // Render cards for this row
+    for (let i = rowStart; i < rowEnd; i++) {
+      items.push(<DashboardCard key={stages[i].id} index={i} />);
+    }
+
+    // If this row has the active panel, insert it spanning full width
+    if (Math.floor(rowStart / 3) === panelRow) {
+      items.push(
+        <div
+          key="inline-panel"
+          style={{
+            gridColumn: '1 / -1',
+            background: 'var(--app-surface)',
+            border: '1px solid var(--app-border2)',
+            borderRadius: 'var(--app-radius)',
+            overflow: 'hidden',
+            minHeight: '280px',
+          }}
+        >
+          {colorModalStageIndex !== null && <ColorPanel />}
+          {mediaModalStageIndex !== null && <MediaPanel />}
+        </div>
+      );
+    }
+  }
 
   return (
     <div style={{
-      background: 'var(--app-surface)',
-      border: '1px solid var(--app-border)',
-      borderRadius: 'var(--app-radius)',
-      padding: '16px 20px',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      gap: '12px',
     }}>
-      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: '12px', fontFamily: 'var(--font-sans)' }}>
-        Intensity Overview
-      </div>
-      <svg
-        width="100%"
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        style={{ display: 'block', maxWidth: `${svgWidth}px` }}
-      >
-        {/* Y-axis labels */}
-        <text x={originX - 6} y={topPad + 8} textAnchor="end" fill="var(--app-muted)" fontSize="9" fontFamily="var(--font-mono)">100</text>
-        <text x={originX - 6} y={topPad + chartHeight / 2 + 3} textAnchor="end" fill="var(--app-muted)" fontSize="9" fontFamily="var(--font-mono)">50</text>
-        <text x={originX - 6} y={topPad + chartHeight + 3} textAnchor="end" fill="var(--app-muted)" fontSize="9" fontFamily="var(--font-mono)">0</text>
-
-        {/* Grid lines */}
-        <line x1={originX} y1={topPad} x2={originX + totalWidth} y2={topPad} stroke="var(--app-border)" strokeWidth="0.5" />
-        <line x1={originX} y1={topPad + chartHeight / 2} x2={originX + totalWidth} y2={topPad + chartHeight / 2} stroke="var(--app-border)" strokeWidth="0.5" />
-        <line x1={originX} y1={topPad + chartHeight} x2={originX + totalWidth} y2={topPad + chartHeight} stroke="var(--app-border)" strokeWidth="0.5" />
-
-        {/* Bars + labels */}
-        {stages.map((stage, i) => {
-          const effective = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
-          const barH = (effective / 100) * chartHeight;
-          const x = originX + i * (barWidth + barGap);
-          const y = topPad + chartHeight - barH;
-
-          return (
-            <g key={stage.id}>
-              {/* Bar */}
-              <rect
-                x={x} y={y}
-                width={barWidth} height={barH}
-                fill={stage.color}
-                opacity={effective > 0 ? 0.85 : 0.1}
-                rx={3}
-              />
-              {/* Stage label */}
-              <text
-                x={x + barWidth / 2}
-                y={topPad + chartHeight + labelHeight - 6}
-                textAnchor="middle"
-                fill="var(--app-muted)"
-                fontSize="9"
-                fontFamily="var(--font-mono)"
-              >
-                {stage.name.length > 8 ? stage.name.slice(0, 7) + '\u2026' : stage.name}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+      {items}
     </div>
   );
 }
@@ -248,9 +240,9 @@ function PresetsSection() {
 export function Dashboard() {
   return (
     <div style={{
-      padding: '24px 28px',
+      padding: '24px 500px',
       paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
-      maxWidth: '960px',
+      maxWidth: '100%',
       margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
@@ -258,7 +250,6 @@ export function Dashboard() {
     }}>
       <SystemStatus />
       <StageStatusGrid />
-      <IntensityChart />
       <PresetsSection />
     </div>
   );

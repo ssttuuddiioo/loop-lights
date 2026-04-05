@@ -52,41 +52,44 @@ export const VerticalFader = memo(function VerticalFader({ stage, stageIndex, ef
   const displayIntensity = draggingRef.current ? localValue : effectiveIntensity;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+    <div
+      class="no-select fader-wrap"
+      style={{
+        position: 'relative',
+        width: '100%',
+        background: 'var(--app-surface3)',
+        borderRadius: 'var(--app-radius)',
+        border: '1px solid var(--app-border)',
+        overflow: 'hidden',
+        touchAction: 'none',
+        cursor: 'ns-resize',
+      }}
+      {...handlers}
+    >
+      {/* Fill */}
       <div
-        class="no-select fader-wrap"
         style={{
-          position: 'relative',
-          width: '36px',
-          background: 'var(--app-surface3)',
-          borderRadius: '18px',
-          border: '1px solid var(--app-border)',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'flex-end',
-          touchAction: 'none',
-          cursor: 'ns-resize',
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          height: `${displayIntensity}%`,
+          background: color,
+          opacity: 0.75,
+          borderRadius: 'var(--app-radius)',
+          transition: draggingRef.current ? 'none' : 'height 0.15s ease',
         }}
-        {...handlers}
-      >
-        <div
-          style={{
-            width: '100%',
-            height: `${displayIntensity}%`,
-            borderRadius: '18px',
-            background: color,
-            opacity: 0.85,
-            pointerEvents: 'none',
-          }}
-        />
-      </div>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1 }}>
-          {localValue}
-        </div>
-        <div style={{ fontSize: '10px', color: 'var(--app-muted)', marginTop: '1px' }}>
-          intensity
-        </div>
+      />
+      {/* Percentage overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'var(--font-sans)',
+        fontSize: '22px',
+        fontWeight: 700,
+        color: '#fff',
+        textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+        pointerEvents: 'none',
+        userSelect: 'none',
+      }}>
+        {localValue}%
       </div>
     </div>
   );

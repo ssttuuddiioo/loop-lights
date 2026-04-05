@@ -1,10 +1,10 @@
 /* ===== Base defaults (all sizes) ===== */
 .fader-wrap {
-  height: 160px;
+  height: 360px;
 }
 
 .stage-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .media-modal-grid {
@@ -17,34 +17,22 @@
 
 /* ===== Phone (max-width: 600px) ===== */
 @media (max-width: 600px) {
+  /* Hide sidebar on phone */
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Remove sidebar margin */
+  #app > div > div {
+    margin-left: 0 !important;
+  }
+
   /* Top bar: stack into two rows */
   .topbar {
     flex-direction: column;
     align-items: stretch;
     padding: 8px 12px;
     gap: 6px;
-  }
-
-  .topbar-left {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .topbar-right {
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: space-between;
-  }
-
-  /* Master fader: fill available width */
-  .master-section {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .master-track {
-    width: 100%;
-    flex: 1 1 auto;
   }
 
   /* Stage grid: 2 columns */
@@ -56,7 +44,7 @@
 
   /* Stage card: tighter padding */
   .stage-card {
-    padding: 12px 10px 10px;
+    padding: 10px;
     gap: 8px;
   }
 

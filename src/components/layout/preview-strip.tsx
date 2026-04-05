@@ -5,7 +5,7 @@ export function PreviewStrip() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
+      position: 'fixed', bottom: 0, left: 'var(--sidebar-width)', right: 0,
       height: '4px', display: 'flex', zIndex: 200,
     }}>
       {stages.map((s) => {

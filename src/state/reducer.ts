@@ -174,13 +174,13 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, currentBank: action.bank };
 
     case 'OPEN_COLOR_MODAL':
-      return { ...state, colorModalStageIndex: action.index };
+      return { ...state, colorModalStageIndex: action.index, mediaModalStageIndex: null };
 
     case 'CLOSE_COLOR_MODAL':
       return { ...state, colorModalStageIndex: null };
 
     case 'OPEN_MEDIA_MODAL':
-      return { ...state, mediaModalStageIndex: action.index };
+      return { ...state, mediaModalStageIndex: action.index, colorModalStageIndex: null };
 
     case 'CLOSE_MEDIA_MODAL':
       return { ...state, mediaModalStageIndex: null };

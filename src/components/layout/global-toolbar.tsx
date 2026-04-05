@@ -1,49 +1,58 @@
 import { useAppState } from '../../state/context';
 import { MasterFader } from '../controls/master-fader';
 import { BlackoutButton } from '../controls/blackout-button';
-import { ConnectionPill } from '../status/connection-pill';
-import { SyncStatus } from '../status/sync-status';
-import { WatchdogPill } from '../status/watchdog-pill';
-import { AppNav } from '../nav/app-nav';
-import { VERSION } from '../../lib/constants';
-import '@material/web/chips/assist-chip.js';
 
-export function GlobalToolbar() {
-  const { stages } = useAppState();
-
+function StatChip({ label, value }: { label: string; value: string | number }) {
   return (
     <div style={{
-      position: 'sticky', top: 0, zIndex: 100,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 28px',
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-      minHeight: 'calc(56px + env(safe-area-inset-top, 0px))',
-      background: 'rgba(10,10,11,0.92)',
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid var(--app-border)',
-      flexWrap: 'wrap',
-      gap: '8px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '8px 16px',
+      background: 'var(--app-surface)',
+      borderRadius: 'var(--app-radius-sm)',
+      border: '1px solid var(--app-border)',
+      minWidth: 80,
     }}>
-      {/* Left: branding + status + nav */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{
-          fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700,
-          letterSpacing: '0.06em', textTransform: 'uppercase' as const,
-        }}>
-          Stage Control
-        </span>
-        <md-assist-chip label={VERSION} />
-        <md-assist-chip label={`${stages.length} STAGE${stages.length === 1 ? '' : 'S'}`} />
-        <ConnectionPill />
-        <AppNav />
+      <span style={{
+        fontFamily: 'var(--font-sans)', fontSize: '10px',
+        color: 'var(--app-muted)', letterSpacing: '0.04em',
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontFamily: 'var(--font-sans)', fontSize: '20px', fontWeight: 700,
+        color: 'var(--app-text)', lineHeight: 1.2,
+      }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+export function GlobalToolbar() {
+  const { stages, masterLevel, mediaSlots } = useAppState();
+
+  return (
+    <div class="topbar" style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '10px 20px',
+      paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
+      background: 'var(--app-surface)',
+      borderBottom: '1px solid var(--app-border)',
+      borderRadius: '0 0 var(--app-radius) var(--app-radius)',
+      gap: '12px',
+      flexWrap: 'wrap',
+    }}>
+      {/* Left: stat chips */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <StatChip label="Stages" value={stages.length} />
+        <StatChip label="Master Level" value={`${masterLevel}%`} />
+        <StatChip label="Media Loaded" value={mediaSlots.length} />
       </div>
 
-      {/* Right: master controls + status */}
+      {/* Right: master controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <MasterFader />
         <BlackoutButton />
-        <SyncStatus />
-        <WatchdogPill />
       </div>
     </div>
   );

@@ -13,15 +13,7 @@ const SpatialView = lazy(() => import('./components/spatial/spatial-view').then(
 
 function SpatialRoute() {
   return (
-    <Suspense fallback={
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: '60vh', color: 'var(--app-muted)',
-        fontFamily: 'var(--font-mono)', fontSize: '13px',
-      }}>
-        Loading 3D...
-      </div>
-    }>
+    <Suspense fallback={null}>
       <SpatialView />
     </Suspense>
   );
