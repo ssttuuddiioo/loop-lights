@@ -239,7 +239,7 @@ function PresetsSection() {
 export function Dashboard() {
   return (
     <div style={{
-      padding: '24px 500px',
+      padding: '24px',
       paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
       maxWidth: '100%',
       margin: '0 auto',
