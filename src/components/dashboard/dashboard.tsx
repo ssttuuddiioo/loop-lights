@@ -1,7 +1,5 @@
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageIntensity } from '../../api/stages';
-import { ColorPanel } from '../modals/color-modal';
-import { MediaPanel } from '../modals/media-modal';
 
 // --- System Status Header ---
 
@@ -43,45 +41,40 @@ function StatusItem({ label, value, color }: { label: string; value: string; col
   );
 }
 
-// --- Stage Card ---
+// --- Stage Card (simplified: on/off + intensity only) ---
 
 function DashboardCard({ index }: { index: number }) {
-  const { stages, masterLevel, blackout, mediaSlots } = useAppState();
+  const { stages, masterLevel, blackout } = useAppState();
   const dispatch = useAppDispatch();
   const stage = stages[index];
   if (!stage) return null;
 
   const effective = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
   const isOn = stage.intensity > 0;
-  const currentSlot = mediaSlots.find(s => String(s.id) === String(stage.mediaId));
-  const mediaName = currentSlot?.name || 'None';
+
+  const toggleOnOff = () => {
+    const newIntensity = isOn ? 0 : (stage.baseIntensity > 0 ? stage.baseIntensity : 100);
+    dispatch({ type: 'SET_STAGE_INTENSITY', index, value: newIntensity });
+    postStageIntensity(stage.id, newIntensity / 100).catch(console.error);
+  };
 
   return (
-    <div
-      onClick={() => {
-        const newIntensity = isOn ? 0 : (stage.baseIntensity > 0 ? stage.baseIntensity : 100);
-        dispatch({ type: 'SET_STAGE_INTENSITY', index, value: newIntensity });
-        postStageIntensity(stage.id, newIntensity / 100).catch(console.error);
-      }}
-      style={{
-        background: 'var(--app-surface)',
-        border: '1px solid var(--app-border)',
-        borderRadius: 'var(--app-radius)',
-        padding: '20px 16px 24px',
-        cursor: 'pointer',
-        transition: 'border-color 0.15s',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
+    <div style={{
+      background: 'var(--app-surface)',
+      border: '1px solid var(--app-border)',
+      borderRadius: 'var(--app-radius)',
+      padding: '16px',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
       {/* Top accent */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
         background: stage.color, opacity: effective / 100,
       }} />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+      {/* Header: name + on/off toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div>
           <div style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}>
             {stage.name}
@@ -90,24 +83,38 @@ function DashboardCard({ index }: { index: number }) {
             ZONE {String(index + 1).padStart(2, '0')}
           </div>
         </div>
-        <span style={{
-          padding: '3px 10px', borderRadius: '12px',
-          fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
-          letterSpacing: '0.04em',
-          background: isOn ? stage.color : 'var(--app-surface3)',
-          color: isOn ? '#000' : 'var(--app-muted)',
-          border: `1px solid ${isOn ? stage.color : 'var(--app-border2)'}`,
-          transition: 'all 0.15s',
-        }}>
-          {isOn ? 'ON' : 'OFF'}
-        </span>
+        <button
+          onClick={toggleOnOff}
+          style={{
+            all: 'unset',
+            cursor: 'pointer',
+            width: '36px',
+            height: '20px',
+            borderRadius: '10px',
+            background: isOn ? stage.color : 'var(--app-surface3)',
+            border: `1px solid ${isOn ? stage.color : 'var(--app-border2)'}`,
+            position: 'relative',
+            transition: 'background 0.15s, border-color 0.15s',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{
+            width: '14px',
+            height: '14px',
+            borderRadius: '50%',
+            background: isOn ? '#fff' : 'var(--app-muted)',
+            position: 'absolute',
+            top: '2px',
+            left: isOn ? '19px' : '2px',
+            transition: 'left 0.15s, background 0.15s',
+          }} />
+        </button>
       </div>
 
       {/* Intensity slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <input
           type="range" min={0} max={100} value={stage.intensity}
-          onClick={(e) => e.stopPropagation()}
           onInput={(e) => {
             const val = parseInt((e.target as HTMLInputElement).value);
             dispatch({ type: 'SET_STAGE_INTENSITY', index, value: val });
@@ -126,82 +133,14 @@ function DashboardCard({ index }: { index: number }) {
           {effective}%
         </span>
       </div>
-
-      {/* Color + Media buttons */}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); dispatch({ type: 'OPEN_COLOR_MODAL', index }); }}
-          style={{
-            all: 'unset', cursor: 'pointer',
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            padding: '6px', borderRadius: 'var(--app-radius-sm)',
-            background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--app-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" /><circle cx="12" cy="7" r="2" fill={stage.color} stroke={stage.color} />
-            <circle cx="7" cy="14" r="2" fill="#ff4d4d" stroke="#ff4d4d" /><circle cx="17" cy="14" r="2" fill="#4780ff" stroke="#4780ff" />
-          </svg>
-          <span style={{ fontSize: '10px', color: 'var(--app-muted)', fontFamily: 'var(--font-sans)' }}>Color</span>
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); dispatch({ type: 'OPEN_MEDIA_MODAL', index }); }}
-          style={{
-            all: 'unset', cursor: 'pointer',
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            padding: '6px', borderRadius: 'var(--app-radius-sm)',
-            background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--app-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M2 14l5-5 4 4 3-3 8 8" />
-            <circle cx="15" cy="9" r="2" />
-          </svg>
-          <span style={{ fontSize: '10px', color: 'var(--app-muted)', fontFamily: 'var(--font-sans)' }}>{mediaName}</span>
-        </button>
-      </div>
     </div>
   );
 }
 
-// --- Stage Grid with inline panels ---
+// --- Stage Grid ---
 
 function StageStatusGrid() {
-  const { stages, colorModalStageIndex, mediaModalStageIndex } = useAppState();
-
-  const panelIndex = colorModalStageIndex ?? mediaModalStageIndex ?? -1;
-  const panelRow = panelIndex >= 0 ? Math.floor(panelIndex / 3) : -1;
-
-  const items: preact.ComponentChildren[] = [];
-
-  for (let rowStart = 0; rowStart < stages.length; rowStart += 3) {
-    const rowEnd = Math.min(rowStart + 3, stages.length);
-
-    // Render cards for this row
-    for (let i = rowStart; i < rowEnd; i++) {
-      items.push(<DashboardCard key={stages[i].id} index={i} />);
-    }
-
-    // If this row has the active panel, insert it spanning full width
-    if (Math.floor(rowStart / 3) === panelRow) {
-      items.push(
-        <div
-          key="inline-panel"
-          style={{
-            gridColumn: '1 / -1',
-            background: 'var(--app-surface)',
-            border: '1px solid var(--app-border2)',
-            borderRadius: 'var(--app-radius)',
-            overflow: 'hidden',
-            minHeight: '280px',
-          }}
-        >
-          {colorModalStageIndex !== null && <ColorPanel />}
-          {mediaModalStageIndex !== null && <MediaPanel />}
-        </div>
-      );
-    }
-  }
+  const { stages } = useAppState();
 
   return (
     <div style={{
@@ -209,7 +148,7 @@ function StageStatusGrid() {
       gridTemplateColumns: 'repeat(3, 1fr)',
       gap: '12px',
     }}>
-      {items}
+      {stages.map((_s, i) => <DashboardCard key={_s.id} index={i} />)}
     </div>
   );
 }
@@ -234,6 +173,26 @@ function PresetsSection() {
   );
 }
 
+// --- Schedule Placeholder ---
+
+function ScheduleSection() {
+  return (
+    <div style={{
+      background: 'var(--app-surface)',
+      border: '1px solid var(--app-border)',
+      borderRadius: 'var(--app-radius)',
+      padding: '16px 20px',
+    }}>
+      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)' }}>
+        Schedule
+      </div>
+      <div style={{ fontSize: '13px', color: 'var(--app-muted)', marginTop: '8px' }}>
+        Automated scene triggers and timed events — coming soon
+      </div>
+    </div>
+  );
+}
+
 // --- Dashboard Page ---
 
 export function Dashboard() {
@@ -250,6 +209,7 @@ export function Dashboard() {
       <SystemStatus />
       <StageStatusGrid />
       <PresetsSection />
+      <ScheduleSection />
     </div>
   );
 }
