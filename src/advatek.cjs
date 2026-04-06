@@ -51,7 +51,7 @@ class ControllerMonitor {
 
       this.state.set(ip, {
         ip,
-        label: label || info.result?.nickname || ip,
+        label: info.result?.nickname || label || ip,
         model: info.result?.prodName || 'Unknown',
         firmware: info.result?.fwVer || 'Unknown',
         nickname: info.result?.nickname || label || ip,
