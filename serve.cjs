@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 /**
  * Production server for Stage Controller.
  * Serves the built app from dist/ and proxies /elm/* to the local ELM server.
