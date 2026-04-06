@@ -8,12 +8,24 @@ echo   DIMLY - Stage Controller Startup
 echo  ========================================
 echo.
 
-REM --- Step 0: Kill any existing Dimly processes ---
+REM --- Step 0: Kill any existing processes ---
 echo  [0/6] Cleaning up old processes...
 echo.
-taskkill /FI "WINDOWTITLE eq Dimly Server" /F >nul 2>&1
-taskkill /FI "WINDOWTITLE eq Dimly Tunnel" /F >nul 2>&1
-timeout /t 2 /nobreak >nul
+echo   Killing node...
+taskkill /F /IM node.exe >nul 2>&1
+echo   Killing cloudflared...
+taskkill /F /IM cloudflared.exe >nul 2>&1
+echo   Waiting for ports to free up...
+timeout /t 5 /nobreak >nul
+
+REM --- Verify port 4200 is free ---
+netstat -ano | findstr ":4200 " >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    echo   Port 4200 still in use, waiting longer...
+    timeout /t 5 /nobreak >nul
+)
+echo   Done.
+echo.
 
 REM --- Step 1: Pull latest from git ---
 echo  [1/6] Pulling latest from git...
@@ -61,15 +73,16 @@ echo   Shaders deployed.
 echo.
 timeout /t 2 /nobreak >nul
 
-REM --- Create logs directory + write startup timestamp ---
+REM --- Create logs directory + clear old server log ---
 if not exist "%~dp0logs" mkdir "%~dp0logs"
 echo [%date% %time%] Dimly starting up >> "%~dp0logs\startup.log"
+echo. > "%~dp0logs\server.log"
 
 REM --- Step 5: Start the controller server ---
 echo  [5/6] Starting Stage Controller on port 4200...
 echo.
 start "Dimly Server" cmd /c "title Dimly Server && node "%~dp0serve.cjs" >> "%~dp0logs\server.log" 2>&1"
-timeout /t 3 /nobreak >nul
+timeout /t 5 /nobreak >nul
 
 REM --- Step 6: Start Cloudflare Tunnel ---
 echo  [6/6] Starting Cloudflare Tunnel (ctrl.dimly.app)...
