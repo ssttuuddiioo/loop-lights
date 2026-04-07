@@ -1,5 +1,5 @@
 # ============================================================
-#  Dimly Watchdog — keeps stage controller + tunnel alive
+#  Dimly Watchdog - keeps stage controller + tunnel alive
 #  Run manually or via Task Scheduler (see install-watchdog.bat)
 # ============================================================
 
@@ -93,7 +93,7 @@ function Start-Elm {
     }
     Write-Log "Starting ELM (opening project file) ..."
     Start-Process -FilePath $ElmProject
-    Write-Log "ELM launch requested — waiting ${ElmStartupWait}s for startup"
+    Write-Log "ELM launch requested - waiting ${ElmStartupWait}s for startup"
     Start-Sleep -Seconds $ElmStartupWait
 }
 
@@ -120,14 +120,14 @@ $maxHealthFailures = 3  # restart server after this many consecutive failures
 while ($true) {
     # --- Check ELM (must be up before server matters) ---
     if (-not (Test-ElmAlive)) {
-        Write-Log "ELM not responding on port 8057 — starting"
+        Write-Log "ELM not responding on port 8057 - starting"
         Start-Elm
     }
 
     # --- Check server process ---
     $alive = Get-ServerProcess
     if (-not $alive) {
-        Write-Log "Server process not found — restarting"
+        Write-Log "Server process not found - restarting"
         $serverProc = Start-Server
         $consecutiveHealthFailures = 0
         Start-Sleep -Seconds 3  # give it a moment to bind the port
@@ -136,7 +136,7 @@ while ($true) {
     # --- Check tunnel process ---
     $tunnelAlive = Get-TunnelProcess
     if (-not $tunnelAlive) {
-        Write-Log "Tunnel process not found — restarting"
+        Write-Log "Tunnel process not found - restarting"
         $tunnelProc = Start-Tunnel
     }
 
@@ -149,7 +149,7 @@ while ($true) {
             $consecutiveHealthFailures++
             Write-Log "Health check failed ($consecutiveHealthFailures/$maxHealthFailures)"
             if ($consecutiveHealthFailures -ge $maxHealthFailures) {
-                Write-Log "Server unresponsive — killing and restarting"
+                Write-Log "Server unresponsive - killing and restarting"
                 $alive | Stop-Process -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Seconds 2
                 $serverProc = Start-Server

@@ -1,5 +1,5 @@
 @echo off
-title Dimly — Install Watchdog
+title Dimly - Install Watchdog
 color 0A
 echo.
 echo  ========================================
@@ -22,7 +22,7 @@ set STABLE_PATH=C:\Tools\cloudflared.exe
 set DOWNLOAD_PATH=C:\Users\loop\Downloads\cloudflared-windows-amd64
 
 if exist "%STABLE_PATH%" (
-    echo  [1/3] cloudflared already at %STABLE_PATH% — skipping
+    echo  [1/3] cloudflared already at %STABLE_PATH% - skipping
 ) else (
     if exist "%DOWNLOAD_PATH%" (
         echo  [1/3] Moving cloudflared to %STABLE_PATH% ...
@@ -48,7 +48,7 @@ schtasks /create /tn "Dimly Watchdog" ^
     /delay 0000:15 ^
     /f
 if %errorLevel% equ 0 (
-    echo        Task created — runs at login with 15s delay.
+    echo        Task created - runs at login with 15s delay.
 ) else (
     echo        ERROR: Failed to create task. Check permissions.
 )
