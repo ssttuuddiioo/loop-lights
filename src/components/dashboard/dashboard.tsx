@@ -384,6 +384,7 @@ function PresetsSection() {
   const handleActivate = async (sceneId: string) => {
     await activateScene(sceneId);
     refresh();
+    window.dispatchEvent(new Event('dimly:force-sync'));
   };
 
   const handleDelete = async (sceneId: string) => {
@@ -497,6 +498,7 @@ function ScheduleSection() {
   const handleFire = async (triggerId: string) => {
     await fireManualTrigger(triggerId);
     refresh();
+    window.dispatchEvent(new Event('dimly:force-sync'));
   };
 
   if (!status) return null;

@@ -134,6 +134,8 @@ export function useSyncEngine() {
 
     tick();
     const handle = setInterval(tick, SYNC_INTERVAL_MS);
-    return () => clearInterval(handle);
+    const forceSync = () => { setTimeout(tick, 500); };
+    window.addEventListener('dimly:force-sync', forceSync);
+    return () => { clearInterval(handle); window.removeEventListener('dimly:force-sync', forceSync); };
   }, []);
 }
