@@ -167,11 +167,6 @@ function hexToRgb(hex: string): { red: number; green: number; blue: number } {
   };
 }
 
-function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
 // --- Preset Editor ---
 
 interface ZoneConfig {
