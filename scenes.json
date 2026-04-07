@@ -19,6 +19,54 @@
         }
       }
     },
+    "amber-white": {
+      "name": "Amber White",
+      "description": "Warm amber-white wash on media slot 1",
+      "stages": {
+        "*": {
+          "media": 1,
+          "intensity": 0.85,
+          "speed": 0.5,
+          "color": { "red": 1.0, "green": 0.953, "blue": 0.929 }
+        }
+      }
+    },
+    "green": {
+      "name": "Green",
+      "description": "Green wash on media slot 2",
+      "stages": {
+        "*": {
+          "media": 2,
+          "intensity": 0.85,
+          "speed": 0.5,
+          "color": { "red": 0.0, "green": 1.0, "blue": 0.0 }
+        }
+      }
+    },
+    "red": {
+      "name": "Red",
+      "description": "Red wash on media slot 4",
+      "stages": {
+        "*": {
+          "media": 4,
+          "intensity": 0.85,
+          "speed": 0.5,
+          "color": { "red": 1.0, "green": 0.0, "blue": 0.0 }
+        }
+      }
+    },
+    "blue": {
+      "name": "Blue",
+      "description": "Blue wash on media slot 5",
+      "stages": {
+        "*": {
+          "media": 5,
+          "intensity": 0.85,
+          "speed": 0.5,
+          "color": { "red": 0.0, "green": 0.0, "blue": 1.0 }
+        }
+      }
+    },
     "blackout": {
       "name": "Blackout",
       "description": "All stages to zero",
