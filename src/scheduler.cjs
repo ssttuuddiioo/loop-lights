@@ -202,6 +202,21 @@ class SceneEngine {
     };
   }
 
+  toggleTrigger(triggerId) {
+    const trigger = this.config.triggers[triggerId];
+    if (!trigger) return { success: false, error: 'Trigger not found' };
+    trigger.enabled = !trigger.enabled;
+    // Persist to disk
+    try {
+      const raw = JSON.stringify(this.config, null, 2);
+      fs.writeFileSync(this.configPath, raw, 'utf-8');
+    } catch (err) {
+      console.error('  [scene-engine] Failed to save config:', err.message);
+    }
+    console.log(`  [scene-engine] Trigger "${triggerId}" ${trigger.enabled ? 'enabled' : 'disabled'}`);
+    return { success: true, triggerId, enabled: trigger.enabled };
+  }
+
   clearManualOverride() {
     this.manualOverrideExpiry = null;
     this.activeTrigger = null;

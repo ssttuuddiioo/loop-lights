@@ -1,5 +1,8 @@
+import { useState, useEffect, useCallback } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageIntensity } from '../../api/stages';
+import { getScenes, getSceneStatus, activateScene, toggleTrigger, fireManualTrigger } from '../../api/scenes';
+import type { Scene, SceneStatus } from '../../api/scenes';
 
 // --- System Status Header ---
 
@@ -148,14 +151,33 @@ function StageStatusGrid() {
       gridTemplateColumns: 'repeat(3, 1fr)',
       gap: '12px',
     }}>
-      {stages.map((_s, i) => <DashboardCard key={_s.id} index={i} />)}
+      {stages.map((s, i) => <DashboardCard key={s.id} index={i} />)}
     </div>
   );
 }
 
-// --- Presets Placeholder ---
+// --- Presets (Scenes) ---
 
 function PresetsSection() {
+  const [scenes, setScenes] = useState<Record<string, Scene>>({});
+  const [status, setStatus] = useState<SceneStatus | null>(null);
+
+  const refresh = useCallback(() => {
+    getScenes().then(setScenes).catch(console.error);
+    getSceneStatus().then(setStatus).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 10000);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  const handleActivate = async (sceneId: string) => {
+    await activateScene(sceneId);
+    refresh();
+  };
+
   return (
     <div style={{
       background: 'var(--app-surface)',
@@ -163,19 +185,68 @@ function PresetsSection() {
       borderRadius: 'var(--app-radius)',
       padding: '16px 20px',
     }}>
-      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)', marginBottom: '12px' }}>
         Presets
       </div>
-      <div style={{ fontSize: '13px', color: 'var(--app-muted)', marginTop: '8px' }}>
-        Save and recall stage configurations — coming soon
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {Object.entries(scenes).map(([id, scene]) => {
+          const isActive = status?.activeScene === id;
+          return (
+            <button
+              key={id}
+              onClick={() => handleActivate(id)}
+              style={{
+                all: 'unset',
+                cursor: 'pointer',
+                padding: '10px 20px',
+                borderRadius: 'var(--app-radius-sm)',
+                background: isActive ? 'var(--app-accent)' : 'var(--app-surface3)',
+                border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border)'}`,
+                color: isActive ? '#fff' : 'var(--app-text)',
+                fontSize: '13px',
+                fontFamily: 'var(--font-sans)',
+                fontWeight: 600,
+                transition: 'all 0.15s',
+              }}
+            >
+              {scene.name}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// --- Schedule Placeholder ---
+// --- Schedule (Triggers) ---
 
 function ScheduleSection() {
+  const [status, setStatus] = useState<SceneStatus | null>(null);
+
+  const refresh = useCallback(() => {
+    getSceneStatus().then(setStatus).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 10000);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  const handleToggle = async (triggerId: string) => {
+    await toggleTrigger(triggerId);
+    refresh();
+  };
+
+  const handleFire = async (triggerId: string) => {
+    await fireManualTrigger(triggerId);
+    refresh();
+  };
+
+  if (!status) return null;
+
+  const triggerEntries = Object.entries(status.triggers);
+
   return (
     <div style={{
       background: 'var(--app-surface)',
@@ -183,11 +254,115 @@ function ScheduleSection() {
       borderRadius: 'var(--app-radius)',
       padding: '16px 20px',
     }}>
-      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)', marginBottom: '12px' }}>
         Schedule
       </div>
-      <div style={{ fontSize: '13px', color: 'var(--app-muted)', marginTop: '8px' }}>
-        Automated scene triggers and timed events — coming soon
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {triggerEntries.map(([id, trigger]) => {
+          const isActive = status.activeTrigger === id;
+          return (
+            <div
+              key={id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 12px',
+                borderRadius: 'var(--app-radius-sm)',
+                background: isActive ? 'var(--app-surface3)' : 'transparent',
+                border: `1px solid ${isActive ? 'var(--app-border2)' : 'var(--app-border)'}`,
+              }}
+            >
+              {/* Enable/disable toggle */}
+              <button
+                onClick={() => handleToggle(id)}
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  width: '32px',
+                  height: '18px',
+                  borderRadius: '9px',
+                  background: trigger.enabled ? '#47ff6a' : 'var(--app-surface3)',
+                  border: `1px solid ${trigger.enabled ? '#47ff6a' : 'var(--app-border2)'}`,
+                  position: 'relative',
+                  transition: 'background 0.15s, border-color 0.15s',
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  background: trigger.enabled ? '#fff' : 'var(--app-muted)',
+                  position: 'absolute',
+                  top: '2px',
+                  left: trigger.enabled ? '17px' : '2px',
+                  transition: 'left 0.15s, background 0.15s',
+                }} />
+              </button>
+
+              {/* Type badge */}
+              <span style={{
+                fontSize: '9px',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase' as const,
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: trigger.type === 'manual' ? 'var(--app-surface3)' :
+                             trigger.type === 'astro' ? '#2d2050' : '#1a3040',
+                color: trigger.type === 'manual' ? 'var(--app-muted)' :
+                       trigger.type === 'astro' ? '#c084fc' : '#38bdf8',
+                flexShrink: 0,
+              }}>
+                {trigger.type}
+              </span>
+
+              {/* Label / ID */}
+              <span style={{
+                fontSize: '13px',
+                fontFamily: 'var(--font-sans)',
+                fontWeight: 500,
+                color: trigger.enabled ? 'var(--app-text)' : 'var(--app-muted)',
+                flex: 1,
+              }}>
+                {trigger.label || id.replace(/-/g, ' ')}
+              </span>
+
+              {/* Scene target */}
+              <span style={{
+                fontSize: '11px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--app-muted)',
+              }}>
+                {trigger.scene}
+              </span>
+
+              {/* Fire button for manual triggers */}
+              {trigger.type === 'manual' && (
+                <button
+                  onClick={() => handleFire(id)}
+                  style={{
+                    all: 'unset',
+                    cursor: 'pointer',
+                    padding: '4px 12px',
+                    borderRadius: 'var(--app-radius-sm)',
+                    background: trigger.color || 'var(--app-surface3)',
+                    border: '1px solid var(--app-border)',
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-sans)',
+                    fontWeight: 600,
+                    color: '#fff',
+                    transition: 'opacity 0.15s',
+                  }}
+                >
+                  Fire
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
