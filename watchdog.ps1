@@ -78,9 +78,13 @@ function Start-Tunnel {
 
 function Test-ElmAlive {
     try {
-        $response = Invoke-WebRequest -Uri $ElmHealthUrl -TimeoutSec $HealthTimeout `
-            -UseBasicParsing -ErrorAction Stop
-        return $response.StatusCode -ge 200 -and $response.StatusCode -lt 500
+        $null = Invoke-WebRequest -Uri $ElmHealthUrl -TimeoutSec $HealthTimeout `
+            -UseBasicParsing -ErrorAction SilentlyContinue
+        return $true
+    } catch [System.Net.WebException] {
+        # 404 or other HTTP error still means ELM is alive
+        if ($_.Exception.Response) { return $true }
+        return $false
     } catch {
         return $false
     }
