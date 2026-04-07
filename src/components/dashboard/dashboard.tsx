@@ -433,7 +433,7 @@ function PresetsSection() {
                   borderRadius: 'var(--app-radius-sm)',
                   background: isActive ? 'var(--app-accent)' : 'var(--app-surface3)',
                   border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border)'}`,
-                  color: isActive ? '#fff' : 'var(--app-text)',
+                  color: isActive ? '#000' : 'var(--app-text)',
                   fontSize: '13px',
                   fontFamily: 'var(--font-sans)',
                   fontWeight: 600,
@@ -442,8 +442,8 @@ function PresetsSection() {
               >
                 {scene.name}
               </button>
-              {/* Delete button — small x */}
-              {id !== 'blackout' && (
+              {/* Delete button — only visible in edit mode */}
+              {editing && id !== 'blackout' && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
                   style={{
