@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
 import { postStageIntensity } from '../../api/stages';
-import { getScenes, getSceneStatus, activateScene, toggleTrigger, fireManualTrigger } from '../../api/scenes';
+import { getScenes, getSceneStatus, activateScene, toggleTrigger, fireManualTrigger, saveScene, deleteScene } from '../../api/scenes';
 import type { Scene, SceneStatus } from '../../api/scenes';
 
 // --- System Status Header ---
@@ -156,11 +156,224 @@ function StageStatusGrid() {
   );
 }
 
+// --- Hex/RGB helpers ---
+
+function hexToRgb(hex: string): { red: number; green: number; blue: number } {
+  const h = hex.replace('#', '');
+  return {
+    red: parseInt(h.substring(0, 2), 16) / 255,
+    green: parseInt(h.substring(2, 4), 16) / 255,
+    blue: parseInt(h.substring(4, 6), 16) / 255,
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// --- Preset Editor ---
+
+interface ZoneConfig {
+  media: number;
+  color: string;
+  intensity: number;
+}
+
+function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
+  const { stages, mediaSlots } = useAppState();
+  const [name, setName] = useState('');
+  const [zones, setZones] = useState<Record<string, ZoneConfig>>({});
+  const [saving, setSaving] = useState(false);
+
+  // Init zones from current stage state
+  useEffect(() => {
+    const initial: Record<string, ZoneConfig> = {};
+    for (const stage of stages) {
+      initial[stage.name] = {
+        media: Number(stage.mediaId) || 1,
+        color: stage.color || '#ffffff',
+        intensity: stage.intensity / 100,
+      };
+    }
+    setZones(initial);
+  }, [stages]);
+
+  const updateZone = (zoneName: string, field: keyof ZoneConfig, value: number | string) => {
+    setZones(prev => ({ ...prev, [zoneName]: { ...prev[zoneName], [field]: value } }));
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    const id = name.trim().toLowerCase().replace(/\s+/g, '-');
+    const stagesConfig: Record<string, { media: number; intensity: number; speed: number; color: { red: number; green: number; blue: number } }> = {};
+    for (const [zoneName, config] of Object.entries(zones)) {
+      const rgb = hexToRgb(config.color);
+      stagesConfig[zoneName] = {
+        media: config.media,
+        intensity: config.intensity,
+        speed: 0.5,
+        color: rgb,
+      };
+    }
+    await saveScene({ id, scene: { name: name.trim(), description: `Custom preset`, stages: stagesConfig } });
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <div style={{
+      background: 'var(--app-surface2)',
+      border: '1px solid var(--app-border2)',
+      borderRadius: 'var(--app-radius)',
+      padding: '16px',
+      marginTop: '8px',
+    }}>
+      {/* Name input */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+        <input
+          type="text"
+          placeholder="Preset name..."
+          value={name}
+          onInput={(e) => setName((e.target as HTMLInputElement).value)}
+          style={{
+            flex: 1,
+            background: 'var(--app-surface)',
+            border: '1px solid var(--app-border)',
+            borderRadius: 'var(--app-radius-sm)',
+            padding: '8px 12px',
+            color: 'var(--app-text)',
+            fontSize: '13px',
+            fontFamily: 'var(--font-sans)',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {/* Zone rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {stages.map((stage) => {
+          const config = zones[stage.name];
+          if (!config) return null;
+          return (
+            <div
+              key={stage.name}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 10px',
+                background: 'var(--app-surface)',
+                borderRadius: 'var(--app-radius-sm)',
+                border: '1px solid var(--app-border)',
+              }}
+            >
+              {/* Zone name */}
+              <span style={{
+                fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+                color: 'var(--app-text)', width: '90px', flexShrink: 0,
+              }}>
+                {stage.name}
+              </span>
+
+              {/* Media slot select */}
+              <select
+                value={config.media}
+                onChange={(e) => updateZone(stage.name, 'media', parseInt((e.target as HTMLSelectElement).value))}
+                style={{
+                  background: 'var(--app-surface3)',
+                  border: '1px solid var(--app-border)',
+                  borderRadius: 'var(--app-radius-sm)',
+                  padding: '4px 8px',
+                  color: 'var(--app-text)',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-sans)',
+                  width: '140px',
+                  flexShrink: 0,
+                  outline: 'none',
+                }}
+              >
+                {mediaSlots.map(slot => (
+                  <option key={slot.id} value={Number(slot.id)}>
+                    {Number(slot.id)}. {slot.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Color picker */}
+              <input
+                type="color"
+                value={config.color}
+                onInput={(e) => updateZone(stage.name, 'color', (e.target as HTMLInputElement).value)}
+                style={{
+                  width: '28px', height: '28px',
+                  border: '1px solid var(--app-border)',
+                  borderRadius: '4px',
+                  padding: 0, cursor: 'pointer',
+                  background: 'transparent',
+                  flexShrink: 0,
+                }}
+              />
+
+              {/* Intensity slider */}
+              <input
+                type="range" min={0} max={100}
+                value={Math.round(config.intensity * 100)}
+                onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
+                style={{ flex: 1, height: '4px', accentColor: config.color, cursor: 'pointer' }}
+              />
+              <span style={{
+                fontSize: '11px', fontFamily: 'var(--font-mono)',
+                color: 'var(--app-muted)', width: '32px', textAlign: 'right' as const,
+              }}>
+                {Math.round(config.intensity * 100)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+        <button
+          onClick={onCancel}
+          style={{
+            all: 'unset', cursor: 'pointer',
+            padding: '6px 16px', borderRadius: 'var(--app-radius-sm)',
+            background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
+            fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+            color: 'var(--app-muted)',
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || saving}
+          style={{
+            all: 'unset', cursor: name.trim() ? 'pointer' : 'not-allowed',
+            padding: '6px 16px', borderRadius: 'var(--app-radius-sm)',
+            background: name.trim() ? 'var(--app-accent)' : 'var(--app-surface3)',
+            border: '1px solid var(--app-border)',
+            fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+            color: name.trim() ? '#fff' : 'var(--app-muted)',
+            opacity: saving ? 0.6 : 1,
+          }}
+        >
+          {saving ? 'Saving...' : 'Save Preset'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // --- Presets (Scenes) ---
 
 function PresetsSection() {
   const [scenes, setScenes] = useState<Record<string, Scene>>({});
   const [status, setStatus] = useState<SceneStatus | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const refresh = useCallback(() => {
     getScenes().then(setScenes).catch(console.error);
@@ -178,6 +391,14 @@ function PresetsSection() {
     refresh();
   };
 
+  const handleDelete = async (sceneId: string) => {
+    const result = await deleteScene(sceneId);
+    if (!result.success && result.error) {
+      alert(result.error);
+    }
+    refresh();
+  };
+
   return (
     <div style={{
       background: 'var(--app-surface)',
@@ -185,35 +406,75 @@ function PresetsSection() {
       borderRadius: 'var(--app-radius)',
       padding: '16px 20px',
     }}>
-      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)', marginBottom: '12px' }}>
-        Presets
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)' }}>
+          Presets
+        </div>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            style={{
+              all: 'unset', cursor: 'pointer',
+              fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+              color: 'var(--app-accent)',
+            }}
+          >
+            + New
+          </button>
+        )}
       </div>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {Object.entries(scenes).map(([id, scene]) => {
           const isActive = status?.activeScene === id;
           return (
-            <button
-              key={id}
-              onClick={() => handleActivate(id)}
-              style={{
-                all: 'unset',
-                cursor: 'pointer',
-                padding: '10px 20px',
-                borderRadius: 'var(--app-radius-sm)',
-                background: isActive ? 'var(--app-accent)' : 'var(--app-surface3)',
-                border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border)'}`,
-                color: isActive ? '#fff' : 'var(--app-text)',
-                fontSize: '13px',
-                fontFamily: 'var(--font-sans)',
-                fontWeight: 600,
-                transition: 'all 0.15s',
-              }}
-            >
-              {scene.name}
-            </button>
+            <div key={id} style={{ position: 'relative', display: 'inline-flex' }}>
+              <button
+                onClick={() => handleActivate(id)}
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  padding: '10px 20px',
+                  borderRadius: 'var(--app-radius-sm)',
+                  background: isActive ? 'var(--app-accent)' : 'var(--app-surface3)',
+                  border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border)'}`,
+                  color: isActive ? '#fff' : 'var(--app-text)',
+                  fontSize: '13px',
+                  fontFamily: 'var(--font-sans)',
+                  fontWeight: 600,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {scene.name}
+              </button>
+              {/* Delete button — small x */}
+              {id !== 'blackout' && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(id); }}
+                  style={{
+                    all: 'unset', cursor: 'pointer',
+                    position: 'absolute', top: '-4px', right: '-4px',
+                    width: '16px', height: '16px',
+                    borderRadius: '50%',
+                    background: 'var(--app-surface3)',
+                    border: '1px solid var(--app-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '10px', color: 'var(--app-muted)',
+                    lineHeight: 1,
+                  }}
+                >
+                  x
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
+      {editing && (
+        <PresetEditor
+          onSaved={() => { setEditing(false); refresh(); }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
     </div>
   );
 }

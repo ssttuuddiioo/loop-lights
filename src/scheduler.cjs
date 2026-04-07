@@ -59,6 +59,15 @@ class SceneEngine {
     }
   }
 
+  _persistConfig() {
+    try {
+      const raw = JSON.stringify(this.config, null, 2);
+      fs.writeFileSync(this.configPath, raw, 'utf-8');
+    } catch (err) {
+      console.error('  [scene-engine] Failed to save config:', err.message);
+    }
+  }
+
   // --- Scene Activation ---
 
   async activateScene(sceneId, transitionDuration = 0) {
@@ -202,17 +211,32 @@ class SceneEngine {
     };
   }
 
+  saveScene(sceneId, scene) {
+    this.config.scenes[sceneId] = scene;
+    this._persistConfig();
+    console.log(`  [scene-engine] Saved scene "${sceneId}"`);
+    return { success: true, sceneId };
+  }
+
+  deleteScene(sceneId) {
+    if (!this.config.scenes[sceneId]) return { success: false, error: 'Scene not found' };
+    // Don't allow deleting scenes that are referenced by triggers
+    for (const [id, trigger] of Object.entries(this.config.triggers)) {
+      if (trigger.scene === sceneId) {
+        return { success: false, error: `Scene is used by trigger "${id}"` };
+      }
+    }
+    delete this.config.scenes[sceneId];
+    this._persistConfig();
+    console.log(`  [scene-engine] Deleted scene "${sceneId}"`);
+    return { success: true };
+  }
+
   toggleTrigger(triggerId) {
     const trigger = this.config.triggers[triggerId];
     if (!trigger) return { success: false, error: 'Trigger not found' };
     trigger.enabled = !trigger.enabled;
-    // Persist to disk
-    try {
-      const raw = JSON.stringify(this.config, null, 2);
-      fs.writeFileSync(this.configPath, raw, 'utf-8');
-    } catch (err) {
-      console.error('  [scene-engine] Failed to save config:', err.message);
-    }
+    this._persistConfig();
     console.log(`  [scene-engine] Trigger "${triggerId}" ${trigger.enabled ? 'enabled' : 'disabled'}`);
     return { success: true, triggerId, enabled: trigger.enabled };
   }

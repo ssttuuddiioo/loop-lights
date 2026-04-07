@@ -54,3 +54,33 @@ export async function toggleTrigger(triggerId: string): Promise<{ success: boole
 export async function fireManualTrigger(triggerId: string): Promise<void> {
   await fetch(`/api/triggers/${triggerId}/fire`, { method: 'POST' });
 }
+
+export interface StageConfig {
+  media?: number;
+  intensity?: number;
+  speed?: number;
+  color?: { red: number; green: number; blue: number };
+}
+
+export interface SceneSavePayload {
+  id: string;
+  scene: {
+    name: string;
+    description: string;
+    stages: Record<string, StageConfig>;
+  };
+}
+
+export async function saveScene(payload: SceneSavePayload): Promise<{ success: boolean }> {
+  const res = await fetch('/api/scenes/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+
+export async function deleteScene(sceneId: string): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch(`/api/scenes/${sceneId}/delete`, { method: 'POST' });
+  return res.json();
+}

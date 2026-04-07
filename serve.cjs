@@ -322,6 +322,31 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.url.startsWith('/api/scenes/') && req.url.includes('/delete') && req.method === 'POST') {
+    const sceneId = req.url.split('?')[0].split('/')[3];
+    const result = engine.deleteScene(sceneId);
+    res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (cleanUrl === '/api/scenes/save' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { id, scene } = JSON.parse(body);
+        const result = engine.saveScene(id, scene);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
   if (cleanUrl === '/api/scenes/reload' && req.method === 'POST') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(engine.reloadConfig()));
