@@ -31,6 +31,7 @@ REM --- Step 1: Pull latest from git ---
 echo  [1/6] Pulling latest from git...
 echo.
 cd /d "%~dp0"
+git checkout -- scenes.json >nul 2>&1
 git pull
 echo.
 timeout /t 3 /nobreak >nul
