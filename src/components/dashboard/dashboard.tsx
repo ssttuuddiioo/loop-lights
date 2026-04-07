@@ -377,9 +377,10 @@ function PresetsSection() {
 
   useEffect(() => {
     refresh();
+    if (editing) return;
     const interval = setInterval(refresh, 10000);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, editing]);
 
   const handleActivate = async (sceneId: string) => {
     await activateScene(sceneId);
