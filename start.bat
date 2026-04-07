@@ -81,13 +81,13 @@ echo. > "%~dp0logs\server.log"
 REM --- Step 5: Start the controller server ---
 echo  [5/6] Starting Stage Controller on port 4200...
 echo.
-start "Dimly Server" cmd /c "title Dimly Server && node "%~dp0serve.cjs" >> "%~dp0logs\server.log" 2>&1"
+start "Dimly Server" /min cmd /c "title Dimly Server && node "%~dp0serve.cjs" >> "%~dp0logs\server.log" 2>&1"
 timeout /t 5 /nobreak >nul
 
 REM --- Step 6: Start Cloudflare Tunnel ---
 echo  [6/6] Starting Cloudflare Tunnel (ctrl.dimly.app)...
 echo.
-start "Dimly Tunnel" cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly >> "%~dp0logs\tunnel.log" 2>&1"
+start "Dimly Tunnel" /min cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly >> "%~dp0logs\tunnel.log" 2>&1"
 timeout /t 5 /nobreak >nul
 
 REM --- Done ---
@@ -101,7 +101,7 @@ echo   Shaders: deployed to %ELM_SHADERS%
 echo   Logs:    %~dp0logs\
 echo  ========================================
 echo.
-echo  This window can be closed. Server and
-echo  tunnel are running in separate windows.
+echo  Server and tunnel running in background.
+echo  Closing in 5 seconds...
 echo.
-pause
+timeout /t 5 /nobreak >nul
