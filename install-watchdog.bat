@@ -19,7 +19,7 @@ if %errorLevel% neq 0 (
 
 REM --- Step 1: Move cloudflared to a stable path ---
 set STABLE_PATH=C:\Tools\cloudflared.exe
-set DOWNLOAD_PATH=C:\Users\livingwalls\Downloads\cloudflared-windows-amd64
+set DOWNLOAD_PATH=C:\Users\loop\Downloads\cloudflared-windows-amd64
 
 if exist "%STABLE_PATH%" (
     echo  [1/3] cloudflared already at %STABLE_PATH% — skipping
@@ -42,7 +42,7 @@ echo  [2/3] Creating scheduled task "Dimly Watchdog" ...
 schtasks /delete /tn "Dimly Watchdog" /f >nul 2>&1
 
 schtasks /create /tn "Dimly Watchdog" ^
-    /tr "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\Users\livingwalls\loop-lights\watchdog.ps1\"" ^
+    /tr "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\Users\loop\loop-lights\watchdog.ps1\"" ^
     /sc onlogon ^
     /rl highest ^
     /delay 0000:15 ^

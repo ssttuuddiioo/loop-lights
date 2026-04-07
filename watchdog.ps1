@@ -5,11 +5,11 @@
 
 # --- Configuration -----------------------------------------------------------
 
-$RepoDir        = if ($env:DIMLY_REPO_DIR)    { $env:DIMLY_REPO_DIR }    else { "C:\Users\livingwalls\loop-lights" }
+$RepoDir        = if ($env:DIMLY_REPO_DIR)    { $env:DIMLY_REPO_DIR }    else { "C:\Users\loop\loop-lights" }
 $ServerScript   = Join-Path $RepoDir "serve.cjs"
 $CloudflaredExe = if ($env:DIMLY_CLOUDFLARED) { $env:DIMLY_CLOUDFLARED } else { "C:\Tools\cloudflared.exe" }
 $TunnelName     = "dimly"
-$ElmProject     = if ($env:DIMLY_ELM_PROJECT) { $env:DIMLY_ELM_PROJECT } else { "C:\Users\livingwalls\Desktop\loop\loop-dimly.elm" }
+$ElmProject     = if ($env:DIMLY_ELM_PROJECT) { $env:DIMLY_ELM_PROJECT } else { "C:\Users\loop\Desktop\loop\loop-dimly.elm" }
 $ElmHealthUrl   = "http://localhost:8057"
 $HealthUrl      = "http://localhost:4200/healthz"
 $LogFile        = Join-Path $RepoDir "watchdog.log"
