@@ -55,6 +55,26 @@ export async function fireManualTrigger(triggerId: string): Promise<void> {
   await fetch(`/api/triggers/${triggerId}/fire`, { method: 'POST' });
 }
 
+export async function updateTrigger(triggerId: string, updates: Record<string, unknown>): Promise<{ success: boolean }> {
+  const res = await fetch(`/api/triggers/${triggerId}/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  return res.json();
+}
+
+export interface FullTrigger {
+  type: 'clock' | 'astro' | 'manual';
+  scene: string;
+  enabled: boolean;
+  priority: number;
+  transition?: { duration: number };
+  schedule?: { time: string; days: string[] };
+  astro?: { event: string; offset: number };
+  manual?: { label: string; icon: string; color: string };
+}
+
 export interface StageConfig {
   media?: number;
   intensity?: number;

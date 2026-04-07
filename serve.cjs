@@ -367,6 +367,24 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.url.startsWith('/api/triggers/') && req.url.includes('/update') && req.method === 'POST') {
+    const triggerId = req.url.split('?')[0].split('/')[3];
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const updates = JSON.parse(body);
+        const result = engine.updateTrigger(triggerId, updates);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
   if (req.url.startsWith('/api/triggers/') && req.url.includes('/toggle') && req.method === 'POST') {
     const triggerId = req.url.split('?')[0].split('/')[3]; // /api/triggers/{id}/toggle
     const result = engine.toggleTrigger(triggerId);

@@ -232,6 +232,15 @@ class SceneEngine {
     return { success: true };
   }
 
+  updateTrigger(triggerId, updates) {
+    const trigger = this.config.triggers[triggerId];
+    if (!trigger) return { success: false, error: 'Trigger not found' };
+    Object.assign(trigger, updates);
+    this._persistConfig();
+    console.log(`  [scene-engine] Updated trigger "${triggerId}"`);
+    return { success: true, triggerId, trigger };
+  }
+
   toggleTrigger(triggerId) {
     const trigger = this.config.triggers[triggerId];
     if (!trigger) return { success: false, error: 'Trigger not found' };
