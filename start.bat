@@ -15,6 +15,8 @@ echo   Killing node...
 taskkill /F /IM node.exe >nul 2>&1
 echo   Killing cloudflared...
 taskkill /F /IM cloudflared.exe >nul 2>&1
+echo   Killing watchdog...
+taskkill /F /FI "WINDOWTITLE eq Dimly Watchdog" >nul 2>&1
 echo   Waiting for ports to free up...
 timeout /t 5 /nobreak >nul
 
@@ -90,6 +92,13 @@ echo  [6/6] Starting Cloudflare Tunnel (ctrl.dimly.app)...
 echo.
 start "Dimly Tunnel" /min cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly >> "%~dp0logs\tunnel.log" 2>&1"
 timeout /t 5 /nobreak >nul
+
+REM --- Step 7: Start Watchdog ---
+echo  [7/7] Starting Watchdog...
+echo.
+taskkill /F /FI "WINDOWTITLE eq Dimly Watchdog" >nul 2>&1
+start "Dimly Watchdog" /min powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0watchdog.ps1"
+timeout /t 2 /nobreak >nul
 
 REM --- Done ---
 echo.
