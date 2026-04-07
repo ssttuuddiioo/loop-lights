@@ -79,6 +79,17 @@
   },
 
   "triggers": {
+    "daily-on": {
+      "type": "clock",
+      "scene": "warm-wash",
+      "transition": { "duration": 10 },
+      "schedule": {
+        "time": "17:00",
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+      },
+      "priority": 20,
+      "enabled": false
+    },
     "nightly-blackout": {
       "type": "clock",
       "scene": "blackout",

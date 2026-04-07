@@ -413,111 +413,157 @@ function PresetsSection() {
   );
 }
 
-// --- Clock Trigger Editor ---
+// --- Daily Schedule Editor ---
 
-function ClockTriggerEditor({ triggerId, trigger, onDone }: {
-  triggerId: string;
-  trigger: FullTrigger;
+function DailyScheduleEditor({
+  onTrigger, offTrigger, scenes, onDone,
+}: {
+  onTrigger: { id: string; trigger: FullTrigger } | null;
+  offTrigger: { id: string; trigger: FullTrigger } | null;
+  scenes: Record<string, Scene>;
   onDone: () => void;
 }) {
-  const [time, setTime] = useState(trigger.schedule?.time || '23:00');
-  const [scene, setScene] = useState(trigger.scene);
-  const [scenes, setScenes] = useState<Record<string, Scene>>({});
+  const [onTime, setOnTime] = useState(onTrigger?.trigger.schedule?.time || '17:00');
+  const [onScene, setOnScene] = useState(onTrigger?.trigger.scene || 'warm-wash');
+  const [offTime, setOffTime] = useState(offTrigger?.trigger.schedule?.time || '23:00');
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    getScenes().then(setScenes).catch(console.error);
-  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    await updateTrigger(triggerId, {
-      schedule: { ...trigger.schedule, time },
-      scene,
-    });
+    if (onTrigger) {
+      await updateTrigger(onTrigger.id, {
+        schedule: { ...onTrigger.trigger.schedule, time: onTime },
+        scene: onScene,
+      });
+    }
+    if (offTrigger) {
+      await updateTrigger(offTrigger.id, {
+        schedule: { ...offTrigger.trigger.schedule, time: offTime },
+      });
+    }
     setSaving(false);
     onDone();
   };
 
+  const sceneOptions = Object.entries(scenes).filter(([id]) => id !== 'blackout');
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '10px',
-      padding: '8px 12px', marginTop: '6px',
+      padding: '12px 16px', marginTop: '8px',
       background: 'var(--app-surface2)',
       borderRadius: 'var(--app-radius-sm)',
       border: '1px solid var(--app-border2)',
+      display: 'flex', flexDirection: 'column', gap: '10px',
     }}>
-      <span style={{ fontSize: '11px', color: 'var(--app-muted)', fontFamily: 'var(--font-sans)' }}>Time</span>
-      <input
-        type="time" value={time}
-        onInput={(e) => setTime((e.target as HTMLInputElement).value)}
-        style={{
-          background: 'var(--app-surface)', border: '1px solid var(--app-border)',
-          borderRadius: 'var(--app-radius-sm)', padding: '4px 8px',
-          color: 'var(--app-text)', fontSize: '12px', fontFamily: 'var(--font-mono)',
-          outline: 'none',
-        }}
-      />
-      <span style={{ fontSize: '11px', color: 'var(--app-muted)', fontFamily: 'var(--font-sans)' }}>Scene</span>
-      <select
-        value={scene}
-        onChange={(e) => setScene((e.target as HTMLSelectElement).value)}
-        style={{
+      {/* Lights ON row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{
+          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+          color: '#47ff6a', width: '70px', flexShrink: 0,
+        }}>Lights On</span>
+        <input
+          type="time" value={onTime}
+          onInput={(e) => setOnTime((e.target as HTMLInputElement).value)}
+          style={{
+            background: 'var(--app-surface)', border: '1px solid var(--app-border)',
+            borderRadius: 'var(--app-radius-sm)', padding: '6px 10px',
+            color: 'var(--app-text)', fontSize: '13px', fontFamily: 'var(--font-mono)',
+            outline: 'none',
+          }}
+        />
+        <select
+          value={onScene}
+          onChange={(e) => setOnScene((e.target as HTMLSelectElement).value)}
+          style={{
+            background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
+            borderRadius: 'var(--app-radius-sm)', padding: '6px 10px',
+            color: 'var(--app-text)', fontSize: '12px', fontFamily: 'var(--font-sans)',
+            outline: 'none', flex: 1,
+          }}
+        >
+          {sceneOptions.map(([id, s]) => (
+            <option key={id} value={id}>{s.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Lights OFF row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{
+          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+          color: 'var(--app-danger)', width: '70px', flexShrink: 0,
+        }}>Lights Off</span>
+        <input
+          type="time" value={offTime}
+          onInput={(e) => setOffTime((e.target as HTMLInputElement).value)}
+          style={{
+            background: 'var(--app-surface)', border: '1px solid var(--app-border)',
+            borderRadius: 'var(--app-radius-sm)', padding: '6px 10px',
+            color: 'var(--app-text)', fontSize: '13px', fontFamily: 'var(--font-mono)',
+            outline: 'none',
+          }}
+        />
+        <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', flex: 1 }}>
+          Blackout
+        </span>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+        <button onClick={onDone} style={{
+          all: 'unset', cursor: 'pointer', padding: '5px 14px',
+          borderRadius: 'var(--app-radius-sm)',
           background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-          borderRadius: 'var(--app-radius-sm)', padding: '4px 8px',
-          color: 'var(--app-text)', fontSize: '11px', fontFamily: 'var(--font-sans)',
-          outline: 'none',
-        }}
-      >
-        {Object.entries(scenes).map(([id, s]) => (
-          <option key={id} value={id}>{s.name}</option>
-        ))}
-      </select>
-      <button onClick={handleSave} disabled={saving} style={{
-        all: 'unset', cursor: 'pointer', padding: '4px 12px',
-        borderRadius: 'var(--app-radius-sm)',
-        background: 'var(--app-accent)', border: '1px solid var(--app-border)',
-        fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
-        color: '#fff', opacity: saving ? 0.6 : 1,
-      }}>{saving ? '...' : 'Save'}</button>
-      <button onClick={onDone} style={{
-        all: 'unset', cursor: 'pointer', padding: '4px 8px',
-        fontSize: '11px', fontFamily: 'var(--font-sans)', color: 'var(--app-muted)',
-      }}>Cancel</button>
+          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--app-muted)',
+        }}>Cancel</button>
+        <button onClick={handleSave} disabled={saving} style={{
+          all: 'unset', cursor: 'pointer', padding: '5px 14px',
+          borderRadius: 'var(--app-radius-sm)',
+          background: 'var(--app-accent)', border: '1px solid var(--app-border)',
+          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+          color: '#fff', opacity: saving ? 0.6 : 1,
+        }}>{saving ? 'Saving...' : 'Save'}</button>
+      </div>
     </div>
   );
 }
 
-// --- Schedule (Triggers) — clock and astro only ---
+// --- Schedule Section ---
 
 function ScheduleSection() {
   const [status, setStatus] = useState<SceneStatus | null>(null);
   const [fullTriggers, setFullTriggers] = useState<Record<string, FullTrigger>>({});
-  const [editingTrigger, setEditingTrigger] = useState<string | null>(null);
+  const [scenes, setScenes] = useState<Record<string, Scene>>({});
+  const [editing, setEditing] = useState(false);
 
   const refresh = useCallback(() => {
     getSceneStatus().then(setStatus).catch(console.error);
     fetch('/api/triggers').then(r => r.json()).then(setFullTriggers).catch(console.error);
+    getScenes().then(setScenes).catch(console.error);
   }, []);
 
   useEffect(() => {
     refresh();
-    if (editingTrigger) return;
+    if (editing) return;
     const interval = setInterval(refresh, 10000);
     return () => clearInterval(interval);
-  }, [refresh, editingTrigger]);
+  }, [refresh, editing]);
 
-  const handleToggle = async (triggerId: string) => {
-    await toggleTrigger(triggerId);
+  const handleToggleBoth = async () => {
+    // Toggle both clock triggers together
+    const onTrigger = fullTriggers['daily-on'];
+    const offTrigger = fullTriggers['nightly-blackout'];
+    if (onTrigger) await toggleTrigger('daily-on');
+    if (offTrigger) await toggleTrigger('nightly-blackout');
     refresh();
   };
 
   if (!status) return null;
 
-  // Only show clock and astro triggers
-  const triggerEntries = Object.entries(fullTriggers).filter(
-    ([, t]) => t.type === 'clock' || t.type === 'astro'
-  );
+  const onTrigger = fullTriggers['daily-on'];
+  const offTrigger = fullTriggers['nightly-blackout'];
+  const clockEnabled = onTrigger?.enabled || offTrigger?.enabled;
+  const astroTriggers = Object.entries(fullTriggers).filter(([, t]) => t.type === 'astro');
 
   return (
     <div style={{
@@ -530,97 +576,131 @@ function ScheduleSection() {
         Schedule
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {triggerEntries.map(([id, trigger]) => {
+
+        {/* Daily Clock Schedule — combined on/off */}
+        {(onTrigger || offTrigger) && (
+          <div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '10px 12px',
+              borderRadius: 'var(--app-radius-sm)',
+              background: clockEnabled ? 'var(--app-surface3)' : 'transparent',
+              border: `1px solid ${clockEnabled ? 'var(--app-border2)' : 'var(--app-border)'}`,
+            }}>
+              {/* Enable/disable toggle */}
+              <button onClick={handleToggleBoth} style={{
+                all: 'unset', cursor: 'pointer',
+                width: '32px', height: '18px', borderRadius: '9px',
+                background: clockEnabled ? '#47ff6a' : 'var(--app-surface3)',
+                border: `1px solid ${clockEnabled ? '#47ff6a' : 'var(--app-border2)'}`,
+                position: 'relative', transition: 'background 0.15s, border-color 0.15s', flexShrink: 0,
+              }}>
+                <div style={{
+                  width: '12px', height: '12px', borderRadius: '50%',
+                  background: clockEnabled ? '#fff' : 'var(--app-muted)',
+                  position: 'absolute', top: '2px',
+                  left: clockEnabled ? '17px' : '2px',
+                  transition: 'left 0.15s, background 0.15s',
+                }} />
+              </button>
+
+              {/* Badge */}
+              <span style={{
+                fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600,
+                letterSpacing: '0.05em', textTransform: 'uppercase' as const,
+                padding: '2px 6px', borderRadius: '4px',
+                background: '#1a3040', color: '#38bdf8', flexShrink: 0,
+              }}>clock</span>
+
+              {/* Label */}
+              <span style={{
+                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 500,
+                color: clockEnabled ? 'var(--app-text)' : 'var(--app-muted)', flex: 1,
+              }}>Daily Schedule</span>
+
+              {/* Time summary when enabled */}
+              {clockEnabled && (
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                  {onTrigger?.schedule?.time || '—'} on · {offTrigger?.schedule?.time || '—'} off
+                </span>
+              )}
+
+              {/* Scene name when enabled */}
+              {clockEnabled && onTrigger && (
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)' }}>
+                  {scenes[onTrigger.scene]?.name || onTrigger.scene}
+                </span>
+              )}
+
+              {/* Edit button */}
+              <button
+                onClick={() => setEditing(!editing)}
+                style={{
+                  all: 'unset', cursor: 'pointer', padding: '3px 10px',
+                  borderRadius: 'var(--app-radius-sm)',
+                  background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
+                  fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+                  color: 'var(--app-muted)',
+                }}
+              >Edit</button>
+            </div>
+
+            {editing && (
+              <DailyScheduleEditor
+                onTrigger={onTrigger ? { id: 'daily-on', trigger: onTrigger } : null}
+                offTrigger={offTrigger ? { id: 'nightly-blackout', trigger: offTrigger } : null}
+                scenes={scenes}
+                onDone={() => { setEditing(false); refresh(); }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Astro triggers */}
+        {astroTriggers.map(([id, trigger]) => {
           const isActive = status.activeTrigger === id;
           const statusTrigger = status.triggers[id];
           return (
-            <div key={id}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '10px 12px',
-                borderRadius: 'var(--app-radius-sm)',
-                background: isActive ? 'var(--app-surface3)' : 'transparent',
-                border: `1px solid ${isActive ? 'var(--app-border2)' : 'var(--app-border)'}`,
+            <div key={id} style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '10px 12px',
+              borderRadius: 'var(--app-radius-sm)',
+              background: isActive ? 'var(--app-surface3)' : 'transparent',
+              border: `1px solid ${isActive ? 'var(--app-border2)' : 'var(--app-border)'}`,
+            }}>
+              <button onClick={() => toggleTrigger(id).then(refresh)} style={{
+                all: 'unset', cursor: 'pointer',
+                width: '32px', height: '18px', borderRadius: '9px',
+                background: statusTrigger?.enabled ? '#47ff6a' : 'var(--app-surface3)',
+                border: `1px solid ${statusTrigger?.enabled ? '#47ff6a' : 'var(--app-border2)'}`,
+                position: 'relative', transition: 'background 0.15s, border-color 0.15s', flexShrink: 0,
               }}>
-                {/* Enable/disable toggle */}
-                <button onClick={() => handleToggle(id)} style={{
-                  all: 'unset', cursor: 'pointer',
-                  width: '32px', height: '18px', borderRadius: '9px',
-                  background: statusTrigger?.enabled ? '#47ff6a' : 'var(--app-surface3)',
-                  border: `1px solid ${statusTrigger?.enabled ? '#47ff6a' : 'var(--app-border2)'}`,
-                  position: 'relative', transition: 'background 0.15s, border-color 0.15s', flexShrink: 0,
-                }}>
-                  <div style={{
-                    width: '12px', height: '12px', borderRadius: '50%',
-                    background: statusTrigger?.enabled ? '#fff' : 'var(--app-muted)',
-                    position: 'absolute', top: '2px',
-                    left: statusTrigger?.enabled ? '17px' : '2px',
-                    transition: 'left 0.15s, background 0.15s',
-                  }} />
-                </button>
-
-                {/* Type badge */}
-                <span style={{
-                  fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600,
-                  letterSpacing: '0.05em', textTransform: 'uppercase' as const,
-                  padding: '2px 6px', borderRadius: '4px',
-                  background: trigger.type === 'astro' ? '#2d2050' : '#1a3040',
-                  color: trigger.type === 'astro' ? '#c084fc' : '#38bdf8',
-                  flexShrink: 0,
-                }}>
-                  {trigger.type}
+                <div style={{
+                  width: '12px', height: '12px', borderRadius: '50%',
+                  background: statusTrigger?.enabled ? '#fff' : 'var(--app-muted)',
+                  position: 'absolute', top: '2px',
+                  left: statusTrigger?.enabled ? '17px' : '2px',
+                  transition: 'left 0.15s, background 0.15s',
+                }} />
+              </button>
+              <span style={{
+                fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600,
+                letterSpacing: '0.05em', textTransform: 'uppercase' as const,
+                padding: '2px 6px', borderRadius: '4px',
+                background: '#2d2050', color: '#c084fc', flexShrink: 0,
+              }}>astro</span>
+              <span style={{
+                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 500,
+                color: statusTrigger?.enabled ? 'var(--app-text)' : 'var(--app-muted)', flex: 1,
+              }}>{id.replace(/-/g, ' ')}</span>
+              {statusTrigger?.enabled && trigger.astro && (
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#c084fc' }}>
+                  {trigger.astro.event}{trigger.astro.offset ? ` ${trigger.astro.offset > 0 ? '+' : ''}${trigger.astro.offset}m` : ''}
                 </span>
-
-                {/* Label */}
-                <span style={{
-                  fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 500,
-                  color: statusTrigger?.enabled ? 'var(--app-text)' : 'var(--app-muted)', flex: 1,
-                }}>
-                  {id.replace(/-/g, ' ')}
-                </span>
-
-                {/* Time / event info when enabled */}
-                {statusTrigger?.enabled && trigger.type === 'clock' && trigger.schedule && (
-                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-                    {trigger.schedule.time}
-                  </span>
-                )}
-                {statusTrigger?.enabled && trigger.type === 'astro' && trigger.astro && (
-                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#c084fc' }}>
-                    {trigger.astro.event}{trigger.astro.offset ? ` ${trigger.astro.offset > 0 ? '+' : ''}${trigger.astro.offset}m` : ''}
-                  </span>
-                )}
-
-                {/* Scene target */}
-                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)' }}>
-                  {trigger.scene}
-                </span>
-
-                {/* Edit button for clock triggers */}
-                {trigger.type === 'clock' && (
-                  <button
-                    onClick={() => setEditingTrigger(editingTrigger === id ? null : id)}
-                    style={{
-                      all: 'unset', cursor: 'pointer', padding: '3px 10px',
-                      borderRadius: 'var(--app-radius-sm)',
-                      background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-                      fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 600,
-                      color: 'var(--app-muted)',
-                    }}
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-
-              {/* Inline editor for clock triggers */}
-              {editingTrigger === id && trigger.type === 'clock' && (
-                <ClockTriggerEditor
-                  triggerId={id}
-                  trigger={trigger}
-                  onDone={() => { setEditingTrigger(null); refresh(); }}
-                />
               )}
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)' }}>
+                {trigger.scene}
+              </span>
             </div>
           );
         })}
