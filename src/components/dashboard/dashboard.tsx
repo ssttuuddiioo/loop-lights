@@ -178,11 +178,10 @@ interface ZoneConfig {
 function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
   const { stages, mediaSlots } = useAppState();
   const [name, setName] = useState('');
-  const [zones, setZones] = useState<Record<string, ZoneConfig>>({});
   const [saving, setSaving] = useState(false);
 
-  // Init zones from current stage state
-  useEffect(() => {
+  // Init zones once from current stage state (ignore subsequent polls)
+  const [zones, setZones] = useState<Record<string, ZoneConfig>>(() => {
     const initial: Record<string, ZoneConfig> = {};
     for (const stage of stages) {
       initial[stage.name] = {
@@ -191,8 +190,8 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
         intensity: stage.intensity / 100,
       };
     }
-    setZones(initial);
-  }, [stages]);
+    return initial;
+  });
 
   const updateZone = (zoneName: string, field: keyof ZoneConfig, value: number | string) => {
     setZones(prev => ({ ...prev, [zoneName]: { ...prev[zoneName], [field]: value } }));
