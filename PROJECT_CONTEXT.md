@@ -4,7 +4,7 @@
 > Last updated: 2026-03-29
 > Repo: https://github.com/ssttuuddiioo/loop-lights
 > Domain: dimly.app
-> Remote URL: https://ctrl.dimly.app
+> Remote URL: https://loop.dimly.app
 
 ---
 
@@ -15,8 +15,7 @@ A web-based stage lighting controller for ENTTEC ELM (LED Mapper). Built with Pr
 **Brand name:** Dimly
 **Repo:** https://github.com/ssttuuddiioo/loop-lights
 **Domain:** dimly.app (registered on GoDaddy, DNS managed by Cloudflare)
-**Remote control URL:** https://ctrl.dimly.app (Cloudflare Tunnel → PC)
-**Future public portal:** https://loop.dimly.app (auth-gated, for clients/audience)
+**Remote control URL:** https://loop.dimly.app (Cloudflare Tunnel → PC)
 **Dev path (Mac):** `/Users/chemistrycreative/Dropbox/Studio/Cursor/CONTROLLER/stage-controller/`
 **Prod path (Windows):** `C:\Users\livingwalls\loop-lights\`
 
@@ -46,7 +45,7 @@ No state management library — uses `useReducer` + Context.
 - **PC IP (current WiFi):** `192.168.1.206`
 - **ELM server:** `localhost:8057` (ENTTEC LED Mapper v741 / ELM 2025)
 - **Stage controller:** `localhost:4200` (Node.js via `serve.cjs`)
-- **Cloudflare Tunnel:** `cloudflared` routes `ctrl.dimly.app` → `localhost:4200`
+- **Cloudflare Tunnel:** `cloudflared` routes `loop.dimly.app` → `localhost:4200`
 
 ### How it runs
 - `serve.bat` → starts Node.js production server on port 4200
@@ -66,7 +65,7 @@ pause
 | Method | URL | When to use |
 |--------|-----|-------------|
 | Local network | `http://192.168.1.206:4200` | Same WiFi, lowest latency (live shows) |
-| Remote / internet | `https://ctrl.dimly.app` | Any device, anywhere, over internet |
+| Remote / internet | `https://loop.dimly.app` | Any device, anywhere, over internet |
 | PC itself | `http://localhost:4200` | Testing on the Windows PC |
 | Phone hotspot fallback | Connect PC to phone hotspot, use PC's IP | No WiFi, no internet at venue |
 
@@ -76,7 +75,7 @@ pause
 - **Config file:** `C:\Users\livingwalls\.cloudflared\config.yml`
 - **Credentials:** `C:\Users\livingwalls\.cloudflared\f7ff7133-1f3d-4360-9cc1-336372c733da.json`
 - **Cloudflared binary:** `C:\Users\livingwalls\Downloads\cloudflared-windows-amd64`
-- **DNS record:** `ctrl` → tunnel CNAME (created via `cloudflared tunnel route dns dimly ctrl.dimly.app`)
+- **DNS record:** `ctrl` → tunnel CNAME (created via `cloudflared tunnel route dns dimly loop.dimly.app`)
 - **Cloudflare account:** Pablo@studiostudio... (free plan)
 - **Nameservers:** `eva.ns.cloudflare.com`, `rodney.ns.cloudflare.com` (set at GoDaddy)
 
@@ -86,7 +85,7 @@ tunnel: f7ff7133-1f3d-4360-9cc1-336372c733da
 credentials-file: C:\Users\livingwalls\.cloudflared\f7ff7133-1f3d-4360-9cc1-336372c733da.json
 
 ingress:
-  - hostname: ctrl.dimly.app
+  - hostname: loop.dimly.app
     service: http://localhost:4200
   - service: http_status:404
 ```
@@ -105,10 +104,10 @@ ingress:
                     [ELM Windows PC]    [iPad / Phone]
                      192.168.1.206       192.168.1.x
                      :8057 (ELM)         Local: http://192.168.1.206:4200
-                     :4200 (serve.cjs)   Remote: https://ctrl.dimly.app
+                     :4200 (serve.cjs)   Remote: https://loop.dimly.app
                      cloudflared tunnel
                           |
-                          |── Cloudflare edge ──→ ctrl.dimly.app (internet access)
+                          |── Cloudflare edge ──→ loop.dimly.app (internet access)
                           |
                     [LED controllers]
                      Art-Net / sACN / KiNet
@@ -254,7 +253,7 @@ stage-controller/
 - **Overview page** — Zone on/off toggles, opacity sliders, master media bin, global controls
 - **Production server** — `serve.cjs` serves dist/ and proxies /elm/ to local ELM
 - **Windows deployment** — `serve.bat` for double-click start
-- **Remote access** — Cloudflare Tunnel to `ctrl.dimly.app` confirmed working from cellular
+- **Remote access** — Cloudflare Tunnel to `loop.dimly.app` confirmed working from cellular
 - **Dark theme** — M3 tokens mapped from original design
 - **iPad optimizations** — Safe area insets, viewport-fit, no zoom, no overscroll, touch-action
 
