@@ -1,10 +1,10 @@
-/* Geist-styled native controls for overview page */
+/* Linear-styled native controls */
 
 /* Toggle switch */
 .geist-toggle {
   position: relative;
-  width: 40px;
-  height: 22px;
+  width: 36px;
+  height: 20px;
   appearance: none;
   -webkit-appearance: none;
   background: var(--app-surface3);
@@ -16,8 +16,8 @@
 }
 
 .geist-toggle:checked {
-  background: var(--app-text);
-  border-color: var(--app-text);
+  background: var(--app-accent);
+  border-color: var(--app-accent);
 }
 
 .geist-toggle::after {
@@ -25,16 +25,16 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--app-muted);
   transition: transform 0.15s, background 0.15s;
 }
 
 .geist-toggle:checked::after {
-  transform: translateX(18px);
-  background: var(--app-bg);
+  transform: translateX(16px);
+  background: #ffffff;
 }
 
 /* Range slider */
@@ -52,29 +52,29 @@
 .geist-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--app-text);
+  background: var(--app-accent);
   border: none;
   cursor: pointer;
   transition: box-shadow 0.1s;
 }
 
 .geist-slider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(94, 106, 210, 0.15);
 }
 
 .geist-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--app-text);
+  background: var(--app-accent);
   border: none;
   cursor: pointer;
 }
 
-/* Param panel slider — same but with accent color */
+/* Param panel slider — accent variant */
 .geist-slider-accent {
   -webkit-appearance: none;
   appearance: none;
@@ -89,24 +89,24 @@
 .geist-slider-accent::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--app-success);
+  background: var(--app-accent);
   border: none;
   cursor: pointer;
   transition: box-shadow 0.1s;
 }
 
 .geist-slider-accent::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 4px rgba(0, 112, 243, 0.15);
+  box-shadow: 0 0 0 4px rgba(94, 106, 210, 0.15);
 }
 
 .geist-slider-accent::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--app-success);
+  background: var(--app-accent);
   border: none;
   cursor: pointer;
 }
@@ -154,7 +154,7 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Gear button */
+/* Icon button — ghost by default */
 .geist-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -162,7 +162,7 @@
   width: 32px;
   height: 32px;
   border-radius: var(--app-radius-sm);
-  border: 1px solid var(--app-border2);
+  border: 1px solid transparent;
   background: transparent;
   color: var(--app-muted);
   cursor: pointer;
@@ -174,7 +174,7 @@
 }
 
 .geist-icon-btn:hover:not(:disabled) {
-  background: var(--app-surface3);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--app-text);
   border-color: var(--app-border2);
 }
@@ -203,6 +203,6 @@
 }
 
 .geist-close-btn:hover {
-  background: var(--app-surface3);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--app-text);
 }

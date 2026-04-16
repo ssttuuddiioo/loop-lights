@@ -23,9 +23,9 @@ function AppContent() {
   return (
     <PageShell>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={SpatialRoute} />
+        <Route path="/dashboard" component={Dashboard} />
         <Route path="/mixer" component={ControlSurface} />
-        <Route path="/3d" component={SpatialRoute} />
         <Route path="/controllers" component={ControllersPage} />
         <Route><Redirect to="/" /></Route>
       </Switch>

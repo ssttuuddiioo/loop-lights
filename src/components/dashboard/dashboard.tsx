@@ -6,50 +6,13 @@ import {
   saveScene, deleteScene, updateTrigger,
 } from '../../api/scenes';
 import type { Scene, SceneStatus, FullTrigger } from '../../api/scenes';
-
-// --- System Status Header ---
-
-function SystemStatus() {
-  const { stages, connected, masterLevel, blackout } = useAppState();
-  const activeCount = stages.filter(s => s.intensity > 0).length;
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '24px',
-      padding: '16px 20px',
-      background: 'var(--app-surface)',
-      border: '1px solid var(--app-border)',
-      borderRadius: 'var(--app-radius)',
-      flexWrap: 'wrap',
-    }}>
-      <StatusItem
-        label="ELM"
-        value={connected ? 'Connected' : 'Offline'}
-        color={connected ? '#47ff6a' : 'var(--app-danger)'}
-      />
-      <StatusItem label="Stages" value={`${stages.length}`} />
-      <StatusItem label="Active" value={`${activeCount}`} color={activeCount > 0 ? 'var(--app-text)' : 'var(--app-muted)'} />
-      <StatusItem label="Master" value={blackout ? 'BLACKOUT' : `${masterLevel}%`} color={blackout ? 'var(--app-danger)' : 'var(--app-text)'} />
-    </div>
-  );
-}
-
-function StatusItem({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-      <span style={{ fontSize: '10px', color: 'var(--app-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)' }}>
-        {label}
-      </span>
-      <span style={{ fontSize: '14px', fontWeight: 600, color: color || 'var(--app-text)', fontFamily: 'var(--font-mono)' }}>
-        {value}
-      </span>
-    </div>
-  );
-}
+import {
+  MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS, MOCK_TRIGGERS,
+} from '../../api/mock';
 
 // --- Stage Card ---
 
-function DashboardCard({ index, fullWidth }: { index: number; fullWidth?: boolean }) {
+function DashboardCard({ index }: { index: number }) {
   const { stages, masterLevel, blackout } = useAppState();
   const dispatch = useAppDispatch();
   const stage = stages[index];
@@ -67,27 +30,33 @@ function DashboardCard({ index, fullWidth }: { index: number; fullWidth?: boolea
   return (
     <div style={{
       background: 'var(--app-surface)',
-      border: '1px solid var(--app-border)',
-      borderRadius: 'var(--app-radius)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '8px',
       padding: '16px',
       position: 'relative',
       overflow: 'hidden',
-      ...(fullWidth ? { gridColumn: '1 / -1' } : {}),
     }}>
-      {/* Top accent */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-        background: stage.color, opacity: effective / 100,
-      }} />
-
-      {/* Header: name + on/off toggle */}
+      {/* Header: dot + name + toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div>
-          <div style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}>
-            {stage.name}
-          </div>
-          <div style={{ fontSize: '10px', color: 'var(--app-muted)', marginTop: '1px' }}>
-            ZONE {String(index + 1).padStart(2, '0')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '6px', height: '6px', borderRadius: '50%',
+            background: stage.color, opacity: isOn ? 1 : 0.3,
+            flexShrink: 0,
+          }} />
+          <div>
+            <div style={{
+              fontSize: '13px', fontWeight: 510, fontFamily: 'var(--font-sans)',
+              letterSpacing: '-0.01em', color: 'var(--app-text)',
+            }}>
+              {stage.name}
+            </div>
+            <div style={{
+              fontSize: '10px', color: 'var(--app-text-quaternary)',
+              fontFamily: 'var(--font-mono)', marginTop: '1px',
+            }}>
+              Zone {String(index + 1).padStart(2, '0')}
+            </div>
           </div>
         </div>
         <button
@@ -98,8 +67,8 @@ function DashboardCard({ index, fullWidth }: { index: number; fullWidth?: boolea
             width: '36px',
             height: '20px',
             borderRadius: '10px',
-            background: isOn ? stage.color : 'var(--app-surface3)',
-            border: `1px solid ${isOn ? stage.color : 'var(--app-border2)'}`,
+            background: isOn ? 'var(--app-accent)' : 'var(--app-surface3)',
+            border: `1px solid ${isOn ? 'var(--app-accent)' : 'var(--app-border2)'}`,
             position: 'relative',
             transition: 'background 0.15s, border-color 0.15s',
             flexShrink: 0,
@@ -130,11 +99,11 @@ function DashboardCard({ index, fullWidth }: { index: number; fullWidth?: boolea
             const val = parseInt((e.target as HTMLInputElement).value);
             postStageIntensity(stage.id, val / 100).catch(console.error);
           }}
-          style={{ flex: 1, height: '6px', accentColor: stage.color, cursor: 'pointer' }}
+          style={{ flex: 1, height: '4px', accentColor: stage.color, cursor: 'pointer' }}
         />
         <span style={{
-          fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 500,
-          color: effective > 0 ? 'var(--app-text)' : 'var(--app-muted)',
+          fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 510,
+          color: effective > 0 ? 'var(--app-accent)' : 'var(--app-muted)',
           minWidth: '32px', textAlign: 'right' as const,
         }}>
           {effective}%
@@ -144,33 +113,36 @@ function DashboardCard({ index, fullWidth }: { index: number; fullWidth?: boolea
   );
 }
 
-// --- Stage Grid: 6 across top row, FACADE full width below ---
+// --- Stage Grid ---
 
 function StageStatusGrid() {
   const { stages } = useAppState();
 
-  // Find the FACADE index (case-insensitive)
   const facadeIndex = stages.findIndex(s => s.name.toUpperCase() === 'FACADE');
   const topStages = stages.filter((_, i) => i !== facadeIndex);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {/* Top row: all non-facade stages in one row */}
+    <div>
+      <div style={{
+        fontSize: '13px', fontWeight: 590, fontFamily: 'var(--font-sans)',
+        letterSpacing: '-0.01em', color: 'var(--app-text)',
+        marginBottom: '12px',
+      }}>
+        Zone Control
+      </div>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${topStages.length}, 1fr)`,
-        gap: '12px',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+        gap: '10px',
       }}>
         {topStages.map((s) => {
           const originalIndex = stages.findIndex(st => st.id === s.id);
           return <DashboardCard key={s.id} index={originalIndex} />;
         })}
+        {facadeIndex >= 0 && (
+          <DashboardCard index={facadeIndex} />
+        )}
       </div>
-
-      {/* Facade full width */}
-      {facadeIndex >= 0 && (
-        <DashboardCard index={facadeIndex} fullWidth />
-      )}
     </div>
   );
 }
@@ -229,7 +201,9 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
         color: rgb,
       };
     }
-    await saveScene({ id, scene: { name: name.trim(), description: 'Custom preset', stages: stagesConfig } });
+    if (!MOCK_ENABLED) {
+      await saveScene({ id, scene: { name: name.trim(), description: 'Custom preset', stages: stagesConfig } });
+    }
     setSaving(false);
     onSaved();
   };
@@ -238,7 +212,7 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
     <div style={{
       background: 'var(--app-surface2)',
       border: '1px solid var(--app-border2)',
-      borderRadius: 'var(--app-radius)',
+      borderRadius: '8px',
       padding: '16px',
       marginTop: '8px',
     }}>
@@ -251,8 +225,8 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
           style={{
             flex: 1,
             background: 'var(--app-surface)',
-            border: '1px solid var(--app-border)',
-            borderRadius: 'var(--app-radius-sm)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '6px',
             padding: '8px 12px',
             color: 'var(--app-text)',
             fontSize: '13px',
@@ -261,7 +235,7 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
           }}
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {stages.map((stage) => {
           const config = zones[stage.name];
           if (!config) return null;
@@ -270,10 +244,13 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '8px 10px',
               background: 'var(--app-surface)',
-              borderRadius: 'var(--app-radius-sm)',
-              border: '1px solid var(--app-border)',
+              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.05)',
             }}>
-              <span style={{ fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--app-text)', width: '90px', flexShrink: 0 }}>
+              <span style={{
+                fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+                color: 'var(--app-text-secondary)', width: '90px', flexShrink: 0,
+              }}>
                 {stage.name}
               </span>
               <select
@@ -281,7 +258,7 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
                 onChange={(e) => updateZone(stage.name, 'media', parseInt((e.target as HTMLSelectElement).value))}
                 style={{
                   background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-                  borderRadius: 'var(--app-radius-sm)', padding: '4px 8px',
+                  borderRadius: '6px', padding: '4px 8px',
                   color: 'var(--app-text)', fontSize: '11px', fontFamily: 'var(--font-sans)',
                   width: '140px', flexShrink: 0, outline: 'none',
                 }}
@@ -310,16 +287,16 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
       </div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={{
-          all: 'unset', cursor: 'pointer', padding: '6px 16px', borderRadius: 'var(--app-radius-sm)',
-          background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--app-muted)',
+          all: 'unset', cursor: 'pointer', padding: '6px 16px', borderRadius: '6px',
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510, color: 'var(--app-muted)',
         }}>Cancel</button>
         <button onClick={handleSave} disabled={!name.trim() || saving} style={{
           all: 'unset', cursor: name.trim() ? 'pointer' : 'not-allowed',
-          padding: '6px 16px', borderRadius: 'var(--app-radius-sm)',
+          padding: '6px 16px', borderRadius: '6px',
           background: name.trim() ? 'var(--app-accent)' : 'var(--app-surface3)',
-          border: '1px solid var(--app-border)',
-          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+          border: '1px solid transparent',
+          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
           color: name.trim() ? '#fff' : 'var(--app-muted)', opacity: saving ? 0.6 : 1,
         }}>{saving ? 'Saving...' : 'Save Preset'}</button>
       </div>
@@ -330,11 +307,13 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
 // --- Presets (Scenes) ---
 
 function PresetsSection() {
-  const [scenes, setScenes] = useState<Record<string, Scene>>({});
-  const [status, setStatus] = useState<SceneStatus | null>(null);
+  const [scenes, setScenes] = useState<Record<string, Scene>>(MOCK_ENABLED ? MOCK_SCENES : {});
+  const [status, setStatus] = useState<SceneStatus | null>(MOCK_ENABLED ? MOCK_SCENE_STATUS : null);
   const [editing, setEditing] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(() => {
+    if (MOCK_ENABLED) return;
     getScenes().then(setScenes).catch(console.error);
     getSceneStatus().then(setStatus).catch(console.error);
   }, []);
@@ -347,12 +326,24 @@ function PresetsSection() {
   }, [refresh, editing]);
 
   const handleActivate = async (sceneId: string) => {
+    if (MOCK_ENABLED) {
+      setStatus(prev => prev ? { ...prev, activeScene: sceneId } : prev);
+      return;
+    }
     await activateScene(sceneId);
     refresh();
     window.dispatchEvent(new Event('dimly:force-sync'));
   };
 
   const handleDelete = async (sceneId: string) => {
+    if (MOCK_ENABLED) {
+      setScenes(prev => {
+        const next = { ...prev };
+        delete next[sceneId];
+        return next;
+      });
+      return;
+    }
     const result = await deleteScene(sceneId);
     if (!result.success && result.error) {
       alert(result.error);
@@ -363,32 +354,45 @@ function PresetsSection() {
   return (
     <div style={{
       background: 'var(--app-surface)',
-      border: '1px solid var(--app-border)',
-      borderRadius: 'var(--app-radius)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '8px',
       padding: '16px 20px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)' }}>
+        <div style={{
+          fontSize: '13px', fontWeight: 590, fontFamily: 'var(--font-sans)',
+          letterSpacing: '-0.01em', color: 'var(--app-text)',
+        }}>
           Presets
         </div>
-        {!editing && (
-          <button onClick={() => setEditing(true)} style={{
-            all: 'unset', cursor: 'pointer', fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--app-accent)',
-          }}>+ New</button>
-        )}
       </div>
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {Object.entries(scenes).map(([id, scene]) => {
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+        gap: '8px',
+      }}>
+        {Object.entries(scenes).filter(([id]) => id !== 'blackout').map(([id, scene]) => {
           const isActive = status?.activeScene === id;
           return (
-            <div key={id} style={{ position: 'relative', display: 'inline-flex' }}>
+            <div key={id} style={{ position: 'relative' }}>
               <button onClick={() => handleActivate(id)} style={{
-                all: 'unset', cursor: 'pointer', padding: '10px 20px',
-                borderRadius: 'var(--app-radius-sm)',
-                background: isActive ? 'var(--app-accent)' : 'var(--app-surface3)',
-                border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border)'}`,
-                color: isActive ? '#000' : 'var(--app-text)',
-                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 600, transition: 'all 0.15s',
+                all: 'unset', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '100%', boxSizing: 'border-box',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: isActive
+                  ? 'var(--app-accent)'
+                  : 'var(--app-surface)',
+                border: `1px solid ${isActive ? 'var(--app-accent)' : 'rgba(255,255,255,0.08)'}`,
+                boxShadow: isActive
+                  ? '0 0 16px rgba(94,106,210,0.25), inset 0 1px 0 rgba(255,255,255,0.1)'
+                  : 'none',
+                color: isActive ? '#fff' : 'var(--app-text-secondary)',
+                fontSize: '13px', fontFamily: 'var(--font-sans)',
+                fontWeight: isActive ? 590 : 510,
+                letterSpacing: '-0.01em',
+                transition: 'all 0.15s',
               }}>{scene.name}</button>
               {editing && id !== 'blackout' && (
                 <button onClick={(e) => { e.stopPropagation(); handleDelete(id); }} style={{
@@ -402,12 +406,38 @@ function PresetsSection() {
             </div>
           );
         })}
+        {!creating && (
+          <button onClick={() => { setEditing(true); setCreating(true); }} style={{
+            all: 'unset', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '100%', boxSizing: 'border-box',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            background: 'transparent',
+            border: '1px dashed rgba(255,255,255,0.12)',
+            color: 'var(--app-accent)',
+            fontSize: '13px', fontFamily: 'var(--font-sans)',
+            fontWeight: 510, letterSpacing: '-0.01em',
+            transition: 'all 0.15s',
+          }}>+ New</button>
+        )}
       </div>
-      {editing && (
+      {creating && (
         <PresetEditor
-          onSaved={() => { setEditing(false); refresh(); }}
-          onCancel={() => setEditing(false)}
+          onSaved={() => { setEditing(false); setCreating(false); refresh(); }}
+          onCancel={() => { setCreating(false); }}
         />
+      )}
+      {editing && !creating && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <button onClick={() => setEditing(false)} style={{
+            all: 'unset', cursor: 'pointer', padding: '6px 16px',
+            borderRadius: '6px',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+            fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+            color: 'var(--app-text-secondary)',
+          }}>Done</button>
+        </div>
       )}
     </div>
   );
@@ -430,16 +460,18 @@ function DailyScheduleEditor({
 
   const handleSave = async () => {
     setSaving(true);
-    if (onTrigger) {
-      await updateTrigger(onTrigger.id, {
-        schedule: { ...onTrigger.trigger.schedule, time: onTime },
-        scene: onScene,
-      });
-    }
-    if (offTrigger) {
-      await updateTrigger(offTrigger.id, {
-        schedule: { ...offTrigger.trigger.schedule, time: offTime },
-      });
+    if (!MOCK_ENABLED) {
+      if (onTrigger) {
+        await updateTrigger(onTrigger.id, {
+          schedule: { ...onTrigger.trigger.schedule, time: onTime },
+          scene: onScene,
+        });
+      }
+      if (offTrigger) {
+        await updateTrigger(offTrigger.id, {
+          schedule: { ...offTrigger.trigger.schedule, time: offTime },
+        });
+      }
     }
     setSaving(false);
     onDone();
@@ -451,22 +483,26 @@ function DailyScheduleEditor({
     <div style={{
       padding: '12px 16px', marginTop: '8px',
       background: 'var(--app-surface2)',
-      borderRadius: 'var(--app-radius-sm)',
+      borderRadius: '6px',
       border: '1px solid var(--app-border2)',
       display: 'flex', flexDirection: 'column', gap: '10px',
     }}>
       {/* Lights ON row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          width: '6px', height: '6px', borderRadius: '50%',
+          background: 'var(--app-success)', flexShrink: 0,
+        }} />
         <span style={{
-          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
-          color: '#47ff6a', width: '70px', flexShrink: 0,
+          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+          color: 'var(--app-text-secondary)', width: '60px', flexShrink: 0,
         }}>Lights On</span>
         <input
           type="time" value={onTime}
           onInput={(e) => setOnTime((e.target as HTMLInputElement).value)}
           style={{
-            background: 'var(--app-surface)', border: '1px solid var(--app-border)',
-            borderRadius: 'var(--app-radius-sm)', padding: '6px 10px',
+            background: 'var(--app-surface)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '6px', padding: '6px 10px',
             color: 'var(--app-text)', fontSize: '13px', fontFamily: 'var(--font-mono)',
             outline: 'none',
           }}
@@ -476,7 +512,7 @@ function DailyScheduleEditor({
           onChange={(e) => setOnScene((e.target as HTMLSelectElement).value)}
           style={{
             background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-            borderRadius: 'var(--app-radius-sm)', padding: '6px 10px',
+            borderRadius: '6px', padding: '6px 10px',
             color: 'var(--app-text)', fontSize: '12px', fontFamily: 'var(--font-sans)',
             outline: 'none', flex: 1,
           }}
@@ -489,16 +525,20 @@ function DailyScheduleEditor({
 
       {/* Lights OFF row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          width: '6px', height: '6px', borderRadius: '50%',
+          background: 'var(--app-danger)', flexShrink: 0,
+        }} />
         <span style={{
-          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
-          color: 'var(--app-danger)', width: '70px', flexShrink: 0,
+          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+          color: 'var(--app-text-secondary)', width: '60px', flexShrink: 0,
         }}>Lights Off</span>
         <input
           type="time" value={offTime}
           onInput={(e) => setOffTime((e.target as HTMLInputElement).value)}
           style={{
-            background: 'var(--app-surface)', border: '1px solid var(--app-border)',
-            borderRadius: 'var(--app-radius-sm)', padding: '6px 10px',
+            background: 'var(--app-surface)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '6px', padding: '6px 10px',
             color: 'var(--app-text)', fontSize: '13px', fontFamily: 'var(--font-mono)',
             outline: 'none',
           }}
@@ -512,15 +552,15 @@ function DailyScheduleEditor({
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
         <button onClick={onDone} style={{
           all: 'unset', cursor: 'pointer', padding: '5px 14px',
-          borderRadius: 'var(--app-radius-sm)',
-          background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--app-muted)',
+          borderRadius: '6px',
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 510, color: 'var(--app-muted)',
         }}>Cancel</button>
         <button onClick={handleSave} disabled={saving} style={{
           all: 'unset', cursor: 'pointer', padding: '5px 14px',
-          borderRadius: 'var(--app-radius-sm)',
-          background: 'var(--app-accent)', border: '1px solid var(--app-border)',
-          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+          borderRadius: '6px',
+          background: 'var(--app-accent)', border: '1px solid transparent',
+          fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 510,
           color: '#fff', opacity: saving ? 0.6 : 1,
         }}>{saving ? 'Saving...' : 'Save'}</button>
       </div>
@@ -531,12 +571,13 @@ function DailyScheduleEditor({
 // --- Schedule Section ---
 
 function ScheduleSection() {
-  const [status, setStatus] = useState<SceneStatus | null>(null);
-  const [fullTriggers, setFullTriggers] = useState<Record<string, FullTrigger>>({});
-  const [scenes, setScenes] = useState<Record<string, Scene>>({});
+  const [status, setStatus] = useState<SceneStatus | null>(MOCK_ENABLED ? MOCK_SCENE_STATUS : null);
+  const [fullTriggers, setFullTriggers] = useState<Record<string, FullTrigger>>(MOCK_ENABLED ? MOCK_TRIGGERS : {});
+  const [scenes, setScenes] = useState<Record<string, Scene>>(MOCK_ENABLED ? MOCK_SCENES : {});
   const [editing, setEditing] = useState(false);
 
   const refresh = useCallback(() => {
+    if (MOCK_ENABLED) return;
     getSceneStatus().then(setStatus).catch(console.error);
     fetch('/api/triggers').then(r => r.json()).then(setFullTriggers).catch(console.error);
     getScenes().then(setScenes).catch(console.error);
@@ -550,7 +591,22 @@ function ScheduleSection() {
   }, [refresh, editing]);
 
   const handleToggleBoth = async () => {
-    // Toggle both clock triggers together
+    if (MOCK_ENABLED) {
+      setFullTriggers(prev => ({
+        ...prev,
+        'daily-on': prev['daily-on'] ? { ...prev['daily-on'], enabled: !prev['daily-on'].enabled } : prev['daily-on'],
+        'nightly-blackout': prev['nightly-blackout'] ? { ...prev['nightly-blackout'], enabled: !prev['nightly-blackout'].enabled } : prev['nightly-blackout'],
+      }));
+      setStatus(prev => {
+        if (!prev) return prev;
+        const updated = { ...prev, triggers: { ...prev.triggers } };
+        for (const k of ['daily-on', 'nightly-blackout']) {
+          if (updated.triggers[k]) updated.triggers[k] = { ...updated.triggers[k], enabled: !updated.triggers[k].enabled };
+        }
+        return updated;
+      });
+      return;
+    }
     const onTrigger = fullTriggers['daily-on'];
     const offTrigger = fullTriggers['nightly-blackout'];
     if (onTrigger) await toggleTrigger('daily-on');
@@ -568,31 +624,35 @@ function ScheduleSection() {
   return (
     <div style={{
       background: 'var(--app-surface)',
-      border: '1px solid var(--app-border)',
-      borderRadius: 'var(--app-radius)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '8px',
       padding: '16px 20px',
     }}>
-      <div style={{ fontSize: '11px', color: 'var(--app-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontFamily: 'var(--font-sans)', marginBottom: '12px' }}>
+      <div style={{
+        fontSize: '13px', fontWeight: 590, fontFamily: 'var(--font-sans)',
+        letterSpacing: '-0.01em', color: 'var(--app-text)',
+        marginBottom: '12px',
+      }}>
         Schedule
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
 
-        {/* Daily Clock Schedule — combined on/off */}
+        {/* Daily Clock Schedule */}
         {(onTrigger || offTrigger) && (
           <div>
             <div style={{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '10px 12px',
-              borderRadius: 'var(--app-radius-sm)',
-              background: clockEnabled ? 'var(--app-surface3)' : 'transparent',
-              border: `1px solid ${clockEnabled ? 'var(--app-border2)' : 'var(--app-border)'}`,
+              borderRadius: '6px',
+              background: clockEnabled ? 'var(--app-surface)' : 'transparent',
+              border: `1px solid ${clockEnabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)'}`,
             }}>
-              {/* Enable/disable toggle */}
+              {/* Toggle */}
               <button onClick={handleToggleBoth} style={{
                 all: 'unset', cursor: 'pointer',
                 width: '32px', height: '18px', borderRadius: '9px',
-                background: clockEnabled ? '#47ff6a' : 'var(--app-surface3)',
-                border: `1px solid ${clockEnabled ? '#47ff6a' : 'var(--app-border2)'}`,
+                background: clockEnabled ? 'var(--app-success)' : 'var(--app-surface3)',
+                border: `1px solid ${clockEnabled ? 'var(--app-success)' : 'var(--app-border2)'}`,
                 position: 'relative', transition: 'background 0.15s, border-color 0.15s', flexShrink: 0,
               }}>
                 <div style={{
@@ -606,26 +666,27 @@ function ScheduleSection() {
 
               {/* Badge */}
               <span style={{
-                fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600,
-                letterSpacing: '0.05em', textTransform: 'uppercase' as const,
-                padding: '2px 6px', borderRadius: '4px',
-                background: '#1a3040', color: '#38bdf8', flexShrink: 0,
+                fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 510,
+                letterSpacing: '0.03em', textTransform: 'uppercase' as const,
+                padding: '2px 8px', borderRadius: '9999px',
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--app-accent)', flexShrink: 0,
               }}>clock</span>
 
               {/* Label */}
               <span style={{
-                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 500,
+                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 510,
                 color: clockEnabled ? 'var(--app-text)' : 'var(--app-muted)', flex: 1,
               }}>Daily Schedule</span>
 
-              {/* Time summary when enabled */}
+              {/* Time summary */}
               {clockEnabled && (
-                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--app-text-secondary)' }}>
                   {onTrigger?.schedule?.time || '—'} on · {offTrigger?.schedule?.time || '—'} off
                 </span>
               )}
 
-              {/* Scene name when enabled */}
+              {/* Scene name */}
               {clockEnabled && onTrigger && (
                 <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)' }}>
                   {scenes[onTrigger.scene]?.name || onTrigger.scene}
@@ -637,9 +698,9 @@ function ScheduleSection() {
                 onClick={() => setEditing(!editing)}
                 style={{
                   all: 'unset', cursor: 'pointer', padding: '3px 10px',
-                  borderRadius: 'var(--app-radius-sm)',
-                  background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-                  fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 600,
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 510,
                   color: 'var(--app-muted)',
                 }}
               >Edit</button>
@@ -664,15 +725,25 @@ function ScheduleSection() {
             <div key={id} style={{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '10px 12px',
-              borderRadius: 'var(--app-radius-sm)',
-              background: isActive ? 'var(--app-surface3)' : 'transparent',
-              border: `1px solid ${isActive ? 'var(--app-border2)' : 'var(--app-border)'}`,
+              borderRadius: '6px',
+              background: isActive ? 'var(--app-surface)' : 'transparent',
+              border: `1px solid ${isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)'}`,
             }}>
-              <button onClick={() => toggleTrigger(id).then(refresh)} style={{
+              <button onClick={() => {
+                if (MOCK_ENABLED) {
+                  setFullTriggers(prev => ({ ...prev, [id]: { ...prev[id], enabled: !prev[id].enabled } }));
+                  setStatus(prev => {
+                    if (!prev || !prev.triggers[id]) return prev;
+                    return { ...prev, triggers: { ...prev.triggers, [id]: { ...prev.triggers[id], enabled: !prev.triggers[id].enabled } } };
+                  });
+                  return;
+                }
+                toggleTrigger(id).then(refresh);
+              }} style={{
                 all: 'unset', cursor: 'pointer',
                 width: '32px', height: '18px', borderRadius: '9px',
-                background: statusTrigger?.enabled ? '#47ff6a' : 'var(--app-surface3)',
-                border: `1px solid ${statusTrigger?.enabled ? '#47ff6a' : 'var(--app-border2)'}`,
+                background: statusTrigger?.enabled ? 'var(--app-success)' : 'var(--app-surface3)',
+                border: `1px solid ${statusTrigger?.enabled ? 'var(--app-success)' : 'var(--app-border2)'}`,
                 position: 'relative', transition: 'background 0.15s, border-color 0.15s', flexShrink: 0,
               }}>
                 <div style={{
@@ -684,17 +755,18 @@ function ScheduleSection() {
                 }} />
               </button>
               <span style={{
-                fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600,
-                letterSpacing: '0.05em', textTransform: 'uppercase' as const,
-                padding: '2px 6px', borderRadius: '4px',
-                background: '#2d2050', color: '#c084fc', flexShrink: 0,
+                fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 510,
+                letterSpacing: '0.03em', textTransform: 'uppercase' as const,
+                padding: '2px 8px', borderRadius: '9999px',
+                background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+                color: '#c084fc', flexShrink: 0,
               }}>astro</span>
               <span style={{
-                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 500,
+                fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 510,
                 color: statusTrigger?.enabled ? 'var(--app-text)' : 'var(--app-muted)', flex: 1,
               }}>{id.replace(/-/g, ' ')}</span>
               {statusTrigger?.enabled && trigger.astro && (
-                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#c084fc' }}>
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--app-text-secondary)' }}>
                   {trigger.astro.event}{trigger.astro.offset ? ` ${trigger.astro.offset > 0 ? '+' : ''}${trigger.astro.offset}m` : ''}
                 </span>
               )}
@@ -714,15 +786,14 @@ function ScheduleSection() {
 export function Dashboard() {
   return (
     <div style={{
-      padding: '24px',
-      paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+      padding: '32px',
+      paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
       maxWidth: '100%',
       margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
-      gap: '16px',
+      gap: '20px',
     }}>
-      <SystemStatus />
       <StageStatusGrid />
       <PresetsSection />
       <ScheduleSection />

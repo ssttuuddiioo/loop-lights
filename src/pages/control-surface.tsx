@@ -2,11 +2,10 @@ import { useAppState } from '../state/context';
 import { StageGrid } from '../components/stage/stage-grid';
 import { BankNav } from '../components/stage/bank-nav';
 import { ColorPanel } from '../components/modals/color-modal';
-import { MediaPanel } from '../components/modals/media-modal';
+import { MixerToolkit } from '../components/mixer/mixer-toolkit';
 
 export function ControlSurface() {
-  const { colorModalStageIndex, mediaModalStageIndex } = useAppState();
-  const panelOpen = colorModalStageIndex !== null || mediaModalStageIndex !== null;
+  const { colorModalStageIndex } = useAppState();
 
   return (
     <div style={{
@@ -16,31 +15,36 @@ export function ControlSurface() {
     }}>
       {/* Stage grid area */}
       <div style={{
-        flex: 1,
+        width: '75%',
+        flexShrink: 0,
         minWidth: 0,
         overflow: 'auto',
-        transition: 'flex 0.25s ease',
       }}>
         <StageGrid />
         <BankNav />
       </div>
 
-      {/* Inline panel */}
-      <div style={{
-        width: panelOpen ? '320px' : '0px',
-        flexShrink: 0,
-        overflow: 'hidden',
-        transition: 'width 0.25s ease',
-        borderLeft: panelOpen ? '1px solid var(--app-border)' : 'none',
-      }}>
+      {/* Color panel — slides in when a stage color is being edited */}
+      {colorModalStageIndex !== null && (
         <div style={{
           width: '320px',
-          height: '100%',
+          flexShrink: 0,
           overflow: 'auto',
+          borderLeft: '1px solid var(--app-border)',
         }}>
-          {colorModalStageIndex !== null && <ColorPanel />}
-          {mediaModalStageIndex !== null && <MediaPanel />}
+          <ColorPanel />
         </div>
+      )}
+
+      {/* Toolkit sidebar — media + presets tabs */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+        borderLeft: '1px solid var(--app-border)',
+        background: 'var(--app-surface)',
+      }}>
+        <MixerToolkit />
       </div>
     </div>
   );

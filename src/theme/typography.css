@@ -1,10 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&family=Geist+Mono:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --font-mono: 'Geist Mono', 'DM Mono', monospace;
-  --font-display: 'Geist', 'Syne', sans-serif;
-  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-features: "cv01", "ss03";
+
+  /* Linear weight scale */
+  --weight-regular: 400;
+  --weight-medium: 510;
+  --weight-strong: 590;
 
   --md-sys-typescale-body-medium-font: var(--font-mono);
   --md-sys-typescale-body-large-font: var(--font-mono);

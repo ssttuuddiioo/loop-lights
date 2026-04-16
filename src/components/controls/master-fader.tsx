@@ -32,9 +32,9 @@ export function MasterFader() {
   const pct = Math.max(0, Math.min(100, masterLevel));
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 14px', background: 'var(--app-surface2)', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)' }}>
-      <span style={{ fontSize: '10px', color: 'var(--app-muted)', letterSpacing: '0.04em' }}>
-        Master Intensity
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 14px', background: 'var(--app-surface)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+      <span style={{ fontSize: '10px', color: 'var(--app-muted)', letterSpacing: '-0.01em', fontFamily: 'var(--font-sans)', fontWeight: 510 }}>
+        Master
       </span>
       <div
         class="no-select master-track"
@@ -55,26 +55,26 @@ export function MasterFader() {
       >
         {/* Track */}
         <div style={{
-          position: 'absolute', left: 0, right: 0, top: '50%', height: '10px',
+          position: 'absolute', left: 0, right: 0, top: '50%', height: '8px',
           transform: 'translateY(-50%)', background: 'var(--app-border2)', borderRadius: '999px',
         }} />
         {/* Fill */}
         <div style={{
-          position: 'absolute', left: 0, top: '50%', height: '10px',
+          position: 'absolute', left: 0, top: '50%', height: '8px',
           transform: 'translateY(-50%)', background: 'var(--app-accent)', borderRadius: '999px',
-          width: `${pct}%`, boxShadow: '0 0 8px rgba(255,255,255,0.15)',
+          width: `${pct}%`, boxShadow: '0 0 8px rgba(94,106,210,0.2)',
         }} />
         {/* Thumb */}
         <div style={{
           position: 'absolute', top: '50%', left: `${pct}%`,
-          width: '24px', height: '24px',
+          width: '20px', height: '20px',
           transform: 'translate(-50%, -50%)', borderRadius: '50%',
           background: 'var(--app-accent)',
           border: '2px solid var(--app-bg)',
-          boxShadow: '0 0 8px rgba(255,255,255,0.2)',
+          boxShadow: '0 0 8px rgba(94,106,210,0.25)',
         }} />
       </div>
-      <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--app-accent)', minWidth: '36px', textAlign: 'right' as const }}>
+      <span style={{ fontSize: '12px', fontWeight: 510, fontFamily: 'var(--font-mono)', color: 'var(--app-accent)', minWidth: '36px', textAlign: 'right' as const }}>
         {pct}%
       </span>
     </div>

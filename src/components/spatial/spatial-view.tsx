@@ -2,13 +2,16 @@ import { useRef, useEffect, useCallback, useState } from 'preact/hooks';
 import { useAppState } from '../../state/context';
 import { buildThumbnailUrl } from '../../api/media';
 import { ZoneSidebar } from './zone-sidebar';
+import { getScenes, getSceneStatus, activateScene } from '../../api/scenes';
+import type { Scene, SceneStatus } from '../../api/scenes';
+import { MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS } from '../../api/mock';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const BG_COLOR = 0x1a1a22;
+const BG_COLOR = 0x1a1a1e;
 const HOVER_BOOST = 0.3;
-const FLOOR_COLOR = 0xe8e4df; // eggshell
+const FLOOR_COLOR = 0x4a4a52;
 
 
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
@@ -69,11 +72,11 @@ export function SpatialView() {
 
     // ── Lighting ────────────────────────────────────────────────────
     // Global illumination: hemisphere light for soft fill
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.1);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
     scene.add(hemi);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.05));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
-    const dir = new THREE.DirectionalLight(0xffffff, 0.01);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.15);
     dir.position.set(0, 35, 0);
     scene.add(dir);
 
@@ -81,8 +84,8 @@ export function SpatialView() {
     const floorGeo = new THREE.PlaneGeometry(200, 200);
     const floorMat = new THREE.MeshStandardMaterial({
       color: FLOOR_COLOR,
-      roughness: 0.85,
-      metalness: 0.05,
+      roughness: 0.65,
+      metalness: 0.15,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -381,7 +384,7 @@ export function SpatialView() {
   const closeModal = useCallback(() => setSelectedZone(null), []);
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: '#1a1a22' }}>
+    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: '#1a1a1e' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
       {loading && !error && (
@@ -405,8 +408,75 @@ export function SpatialView() {
       )}
 
       <ZoneLabels />
+      <PresetDock />
 
       <ZoneSidebar stageIndex={selectedZone} onClose={closeModal} />
+    </div>
+  );
+}
+
+function PresetDock() {
+  const [scenes, setScenes] = useState<Record<string, Scene>>(MOCK_ENABLED ? MOCK_SCENES : {});
+  const [status, setStatus] = useState<SceneStatus | null>(MOCK_ENABLED ? MOCK_SCENE_STATUS : null);
+
+  const refresh = useCallback(() => {
+    if (MOCK_ENABLED) return;
+    getScenes().then(setScenes).catch(console.error);
+    getSceneStatus().then(setStatus).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 10000);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  const handleActivate = async (sceneId: string) => {
+    if (MOCK_ENABLED) {
+      setStatus(prev => prev ? { ...prev, activeScene: sceneId } : prev);
+      return;
+    }
+    await activateScene(sceneId);
+    refresh();
+    window.dispatchEvent(new Event('dimly:force-sync'));
+  };
+
+  const entries = Object.entries(scenes);
+  if (entries.length === 0) return null;
+
+  return (
+    <div style={{
+      position: 'absolute', bottom: '20px', left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex', gap: '6px',
+      padding: '6px',
+      background: 'rgba(15,16,17,0.85)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      borderRadius: '12px',
+      border: '1px solid rgba(255,255,255,0.08)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      pointerEvents: 'auto',
+    }}>
+      {entries.map(([id, scene]) => {
+        const isActive = status?.activeScene === id;
+        return (
+          <button key={id} onClick={() => handleActivate(id)} style={{
+            all: 'unset', cursor: 'pointer',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            background: isActive ? 'var(--app-accent)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${isActive ? 'var(--app-accent)' : 'transparent'}`,
+            boxShadow: isActive ? '0 0 12px rgba(94,106,210,0.3)' : 'none',
+            color: isActive ? '#fff' : 'var(--app-text-secondary)',
+            fontSize: '12px', fontFamily: 'var(--font-sans)',
+            fontWeight: isActive ? 590 : 510,
+            letterSpacing: '-0.01em',
+            transition: 'all 0.15s',
+            whiteSpace: 'nowrap',
+          }}>{scene.name}</button>
+        );
+      })}
     </div>
   );
 }

@@ -5,21 +5,17 @@ import { BlackoutButton } from '../controls/blackout-button';
 function StatChip({ label, value }: { label: string; value: string | number }) {
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '8px 16px',
-      background: 'var(--app-surface)',
-      borderRadius: 'var(--app-radius-sm)',
-      border: '1px solid var(--app-border)',
-      minWidth: 80,
+      display: 'flex', alignItems: 'baseline', gap: '6px',
+      padding: '4px 0',
     }}>
       <span style={{
-        fontFamily: 'var(--font-sans)', fontSize: '10px',
-        color: 'var(--app-muted)', letterSpacing: '0.04em',
+        fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 510,
+        color: 'var(--app-text-quaternary)', letterSpacing: '-0.01em',
       }}>
         {label}
       </span>
       <span style={{
-        fontFamily: 'var(--font-sans)', fontSize: '20px', fontWeight: 700,
+        fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 510,
         color: 'var(--app-text)', lineHeight: 1.2,
       }}>
         {value}
@@ -37,17 +33,16 @@ export function GlobalToolbar() {
       padding: '10px 20px',
       paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
       background: 'var(--app-surface)',
-      borderBottom: '1px solid var(--app-border)',
-      borderRadius: '0 0 var(--app-radius) var(--app-radius)',
-      gap: '12px',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      gap: '16px',
       flexWrap: 'wrap',
     }}>
       {/* Left: stat chips */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
         <StatChip label="Stages" value={stages.length} />
         <StatChip label="Master Level" value={`${masterLevel}%`} />
-        <StatChip label="Media Loaded" value={mediaSlots.length} />
-        <StatChip label="ELM FPS" value={elmOutputRate || '—'} />
+        <StatChip label="Media" value={mediaSlots.length} />
+        <StatChip label="FPS" value={elmOutputRate || '—'} />
       </div>
 
       {/* Right: master controls */}
