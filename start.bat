@@ -90,7 +90,7 @@ timeout /t 5 /nobreak >nul
 REM --- Step 6: Start Cloudflare Tunnel ---
 echo  [6/6] Starting Cloudflare Tunnel (loop.dimly.app)...
 echo.
-start "Dimly Tunnel" /min cmd /c "title Dimly Tunnel && C:\Tools\cloudflared.exe tunnel run dimly >> "%~dp0logs\tunnel.log" 2>&1"
+start "Dimly Tunnel" /min cmd /c "title Dimly Tunnel && cloudflared.exe tunnel run dimly >> "%~dp0logs\tunnel.log" 2>&1"
 timeout /t 5 /nobreak >nul
 
 REM --- Step 7: Start Watchdog ---

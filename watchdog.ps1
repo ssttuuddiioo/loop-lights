@@ -7,7 +7,7 @@
 
 $RepoDir        = if ($env:DIMLY_REPO_DIR)    { $env:DIMLY_REPO_DIR }    else { "C:\Users\loop\loop-lights" }
 $ServerScript   = Join-Path $RepoDir "serve.cjs"
-$CloudflaredExe = if ($env:DIMLY_CLOUDFLARED) { $env:DIMLY_CLOUDFLARED } else { "C:\Tools\cloudflared.exe" }
+$CloudflaredExe = if ($env:DIMLY_CLOUDFLARED) { $env:DIMLY_CLOUDFLARED } else { "cloudflared.exe" }
 $TunnelName     = "dimly"
 $ElmProject     = if ($env:DIMLY_ELM_PROJECT) { $env:DIMLY_ELM_PROJECT } else { "C:\Users\loop\Downloads\LOOP_V1-REMOTE TEST ONLY.elm" }
 $ElmHealthUrl   = "http://localhost:8057"
