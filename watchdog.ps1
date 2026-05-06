@@ -115,6 +115,22 @@ function Test-ServerHealth {
 
 Write-Log "========== Dimly Watchdog started =========="
 
+# Detect cloudflared availability once at startup so we don't spam logs every loop
+$resolvedCf = $null
+if (Test-Path $CloudflaredExe) {
+    $resolvedCf = $CloudflaredExe
+} else {
+    $cmd = Get-Command cloudflared -ErrorAction SilentlyContinue
+    if ($cmd) { $resolvedCf = $cmd.Source }
+}
+$SkipTunnel = -not $resolvedCf
+if ($SkipTunnel) {
+    Write-Log "cloudflared not found at $CloudflaredExe and not on PATH - tunnel checks disabled"
+} else {
+    $CloudflaredExe = $resolvedCf
+    Write-Log "cloudflared found at $CloudflaredExe"
+}
+
 # Initial startup
 $serverProc = $null
 $tunnelProc = $null
@@ -137,11 +153,13 @@ while ($true) {
         Start-Sleep -Seconds 3  # give it a moment to bind the port
     }
 
-    # --- Check tunnel process ---
-    $tunnelAlive = Get-TunnelProcess
-    if (-not $tunnelAlive) {
-        Write-Log "Tunnel process not found - restarting"
-        $tunnelProc = Start-Tunnel
+    # --- Check tunnel process (skip entirely if cloudflared isn't installed) ---
+    if (-not $SkipTunnel) {
+        $tunnelAlive = Get-TunnelProcess
+        if (-not $tunnelAlive) {
+            Write-Log "Tunnel process not found - restarting"
+            $tunnelProc = Start-Tunnel
+        }
     }
 
     # --- HTTP health check (only if server process is running) ---
