@@ -1,7 +1,5 @@
-import { useCallback } from 'preact/hooks';
 import { memo } from 'preact/compat';
-import { useAppState, useAppDispatch } from '../../state/context';
-import { postStageMedia } from '../../api/stages';
+import { useAppState } from '../../state/context';
 import { buildThumbnailUrl } from '../../api/media';
 import type { StageState } from '../../types/stage';
 
@@ -11,41 +9,15 @@ interface MediaSectionProps {
   onOpenModal: () => void;
 }
 
-const selectStyle = {
-  fontFamily: 'var(--font-sans)',
-  fontSize: '11px',
-  width: '100%',
-  padding: '7px 24px 7px 10px',
-  background: 'var(--app-surface3)',
-  border: '1px solid var(--app-border)',
-  borderRadius: 'var(--app-radius-sm)',
-  color: 'var(--app-text)',
-  cursor: 'pointer',
-  outline: 'none',
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(224,224,232,0.3)' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'right 8px center',
-};
-
-export const MediaSection = memo(function MediaSection({ stage, stageIndex, onOpenModal }: MediaSectionProps) {
+export const MediaSection = memo(function MediaSection({ stage, onOpenModal }: MediaSectionProps) {
   const { mediaSlots } = useAppState();
-  const dispatch = useAppDispatch();
 
   const currentSlot = mediaSlots.find(s => String(s.id) === String(stage.mediaId));
   const thumbUrl = currentSlot ? buildThumbnailUrl(currentSlot.id, currentSlot.thumbnailETag) : '';
   const mediaName = currentSlot ? currentSlot.name : 'None';
 
-  const onSelectChange = useCallback((e: Event) => {
-    const val = (e.target as HTMLSelectElement).value;
-    const mediaId = val === '' ? '' : val;
-    dispatch({ type: 'SET_STAGE_MEDIA', index: stageIndex, mediaId });
-    postStageMedia(stage.id, mediaId || 0).catch(console.error);
-  }, [dispatch, stageIndex, stage.id]);
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+    <div style={{ width: '100%' }}>
       {/* Thumbnail */}
       <div
         onClick={onOpenModal}
@@ -69,14 +41,6 @@ export const MediaSection = memo(function MediaSection({ stage, stageIndex, onOp
           {mediaName}
         </div>
       </div>
-
-      {/* Media dropdown */}
-      <select value={String(stage.mediaId || '')} onChange={onSelectChange} style={selectStyle}>
-        <option value="">None</option>
-        {mediaSlots.map(m => (
-          <option key={m.id} value={String(m.id)}>{m.name}</option>
-        ))}
-      </select>
     </div>
   );
 });

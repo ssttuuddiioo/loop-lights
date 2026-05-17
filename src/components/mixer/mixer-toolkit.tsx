@@ -10,9 +10,20 @@ import type { Scene, SceneStatus } from '../../api/scenes';
 import {
   MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS,
 } from '../../api/mock';
+import { EffectsTab } from './effects-tab';
 
-type Tab = 'media' | 'presets';
-type MediaFilter = 'all' | 'effects' | 'video';
+type Tab = 'media' | 'effects' | 'presets';
+
+const SHADER_KEYS = [
+  'gradient ramp', 'plasma', 'color wash',
+  'strobe', 'pulse', 'rainbow', 'checker',
+  'fire', 'scan', 'spiral', 'ripple', 'sparkle',
+];
+
+function isShaderSlot(name: string): boolean {
+  const lower = name.toLowerCase();
+  return SHADER_KEYS.some(k => lower.includes(k));
+}
 
 const VIDEO_EXTS = /\.(mp4|mov|avi|gif|png|jpg|jpeg|webm|webp)$/i;
 function isVideoSlot(name: string): boolean { return VIDEO_EXTS.test(name); }
@@ -57,12 +68,13 @@ export function MixerToolkit() {
         flexShrink: 0,
       }}>
         <button onClick={() => setTab('media')} style={tabStyle(tab === 'media')}>Media</button>
+        <button onClick={() => setTab('effects')} style={tabStyle(tab === 'effects')}>Effects</button>
         <button onClick={() => setTab('presets')} style={tabStyle(tab === 'presets')}>Presets</button>
       </div>
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {tab === 'media' ? <MediaTab /> : <PresetsTab />}
+        {tab === 'media' ? <MediaTab /> : tab === 'effects' ? <EffectsTab /> : <PresetsTab />}
       </div>
     </div>
   );
@@ -73,7 +85,7 @@ export function MixerToolkit() {
 function MediaTab() {
   const { stages, mediaSlots, mediaModalStageIndex } = useAppState();
   const dispatch = useAppDispatch();
-  const [filter, setFilter] = useState<MediaFilter>('all');
+  const [filter, setFilter] = useState<'all' | 'video'>('all');
   const [target, setTarget] = useState<number | null>(null);
 
   useEffect(() => {
@@ -119,7 +131,7 @@ function MediaTab() {
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: '4px' }}>
-        {(['all', 'effects', 'video'] as MediaFilter[]).map(f => (
+        {(['all', 'video'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{
             all: 'unset', cursor: 'pointer',
             fontFamily: 'var(--font-sans)', fontSize: '10px', fontWeight: 510,
@@ -137,8 +149,7 @@ function MediaTab() {
         <MediaTile name="None" thumbUrl="" selected={isNoneSelected} onClick={() => choose('')} />
         {mediaSlots.filter(slot => {
           if (filter === 'all') return true;
-          if (filter === 'video') return isVideoSlot(slot.name);
-          return !isVideoSlot(slot.name);
+          return isVideoSlot(slot.name);
         }).map(slot => (
           <MediaTile
             key={slot.id}
@@ -294,12 +305,13 @@ function hexToRgb(hex: string): { red: number; green: number; blue: number } {
 
 function PresetEditor({ stages, mediaSlots, onSaved, onCancel }: {
   stages: { name: string; mediaId: string | number; color: string; intensity: number }[];
-  mediaSlots: { id: string | number; name: string }[];
+  mediaSlots: { id: string | number; name: string; thumbnailETag: string }[];
   onSaved: () => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pickingZone, setPickingZone] = useState<string | null>(null);
 
   const [zones, setZones] = useState<Record<string, ZoneConfig>>(() => {
     const initial: Record<string, ZoneConfig> = {};
@@ -356,45 +368,80 @@ function PresetEditor({ stages, mediaSlots, onSaved, onCancel }: {
         {stages.map((stage) => {
           const config = zones[stage.name];
           if (!config) return null;
+          const selectedSlot = mediaSlots.find(s => Number(s.id) === config.media);
+          const isPicking = pickingZone === stage.name;
           return (
             <div key={stage.name} style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
+              display: 'flex', flexDirection: 'column', gap: '4px',
               padding: '6px 8px', background: 'var(--app-surface)',
               borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)',
             }}>
-              <span style={{
-                fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 510,
-                color: 'var(--app-text-secondary)', width: '70px', flexShrink: 0,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{stage.name}</span>
-              <select
-                value={config.media}
-                onChange={(e) => updateZone(stage.name, 'media', parseInt((e.target as HTMLSelectElement).value))}
-                style={{
-                  background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-                  borderRadius: '4px', padding: '2px 4px',
-                  color: 'var(--app-text)', fontSize: '10px', fontFamily: 'var(--font-sans)',
-                  width: '80px', flexShrink: 0, outline: 'none',
-                }}
-              >
-                {mediaSlots.map(slot => (
-                  <option key={slot.id} value={Number(slot.id)}>{slot.name}</option>
-                ))}
-              </select>
-              <input
-                type="color" value={config.color}
-                onInput={(e) => updateZone(stage.name, 'color', (e.target as HTMLInputElement).value)}
-                style={{ width: '22px', height: '22px', border: '1px solid var(--app-border)', borderRadius: '3px', padding: 0, cursor: 'pointer', background: 'transparent', flexShrink: 0 }}
-              />
-              <input
-                type="range" min={0} max={100}
-                value={Math.round(config.intensity * 100)}
-                onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
-                style={{ flex: 1, height: '3px', accentColor: config.color, cursor: 'pointer', minWidth: '40px' }}
-              />
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', width: '28px', textAlign: 'right' as const }}>
-                {Math.round(config.intensity * 100)}%
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+                  color: 'var(--app-text-secondary)', width: '70px', flexShrink: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{stage.name}</span>
+                <div
+                  onClick={() => setPickingZone(isPicking ? null : stage.name)}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '4px',
+                    backgroundImage: selectedSlot ? `url('${buildThumbnailUrl(selectedSlot.id, selectedSlot.thumbnailETag)}')` : 'none',
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    background: selectedSlot ? undefined : 'var(--app-surface3)',
+                    border: `1px solid ${isPicking ? 'var(--app-accent)' : 'var(--app-border)'}`,
+                    cursor: 'pointer', flexShrink: 0,
+                  }}
+                />
+                <span style={{
+                  fontSize: '9px', fontFamily: 'var(--font-sans)', color: 'var(--app-muted)',
+                  flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{selectedSlot?.name || '—'}</span>
+                <input
+                  type="color" value={config.color}
+                  onInput={(e) => updateZone(stage.name, 'color', (e.target as HTMLInputElement).value)}
+                  style={{ width: '22px', height: '22px', border: '1px solid var(--app-border)', borderRadius: '3px', padding: 0, cursor: 'pointer', background: 'transparent', flexShrink: 0 }}
+                />
+                <input
+                  type="range" min={0} max={100}
+                  value={Math.round(config.intensity * 100)}
+                  onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
+                  style={{ flex: 1, height: '3px', accentColor: config.color, cursor: 'pointer', minWidth: '40px' }}
+                />
+                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', width: '28px', textAlign: 'right' as const }}>
+                  {Math.round(config.intensity * 100)}%
+                </span>
+              </div>
+              {isPicking && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '3px', maxHeight: '140px', overflow: 'auto' }}>
+                  {mediaSlots.map(slot => {
+                    const isSelected = Number(slot.id) === config.media;
+                    return (
+                      <div
+                        key={slot.id}
+                        onClick={() => { updateZone(stage.name, 'media', Number(slot.id)); setPickingZone(null); }}
+                        style={{
+                          aspectRatio: '1', borderRadius: '4px', overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: `2px solid ${isSelected ? 'var(--app-accent)' : 'transparent'}`,
+                          backgroundImage: `url('${buildThumbnailUrl(slot.id, slot.thumbnailETag)}')`,
+                          backgroundSize: 'cover', backgroundPosition: 'center',
+                          background: undefined,
+                          position: 'relative',
+                        }}
+                      >
+                        <div style={{
+                          position: 'absolute', bottom: 0, left: 0, right: 0,
+                          background: 'rgba(0,0,0,0.7)', padding: '2px 3px',
+                          fontSize: '7px', fontFamily: 'var(--font-sans)',
+                          color: isSelected ? 'var(--app-accent)' : '#ccc',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{slot.name}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}

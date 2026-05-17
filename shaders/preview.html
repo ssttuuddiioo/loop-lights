@@ -2,11 +2,30 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Shader Preview — Gradient Ramp</title>
+<title>Shader Preview</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #111; color: #eee; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
-  canvas { display: block; width: 100vw; height: 70vh; }
+  canvas { display: block; width: 100vw; height: 65vh; }
+  .toolbar {
+    padding: 12px 24px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid #222;
+  }
+  .toolbar button {
+    padding: 6px 16px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #888;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toolbar button:hover { border-color: #555; color: #ccc; }
+  .toolbar button.active { border-color: #e8ff47; color: #e8ff47; background: #1a1f10; }
   .controls {
     padding: 20px 24px;
     display: grid;
@@ -25,23 +44,32 @@
     background: #e8ff47; cursor: pointer;
   }
   h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #555; padding: 16px 24px 0; }
+  #error { color: #ff4444; padding: 8px 24px; font-size: 11px; display: none; }
 </style>
 </head>
 <body>
+
+<div class="toolbar">
+  <button class="active" data-shader="gradient-ramp">Gradient Ramp</button>
+  <button data-shader="plasma">Plasma</button>
+  <button data-shader="color-wash">Color Wash</button>
+</div>
+
 <canvas id="c"></canvas>
+<div id="error"></div>
 <h2>ELM Parameter Preview</h2>
 <div class="controls">
   <div class="control">
-    <label>Force — Color 1 Hue <span id="v-force">1</span></label>
+    <label>Force -- Color 1 Hue <span id="v-force">1</span></label>
     <input type="range" id="force" min="1" max="10" step="0.1" value="1">
   </div>
   <div class="control">
-    <label>Force 2 — Color 2 Hue <span id="v-force2">5</span></label>
+    <label>Force 2 -- Color 2 Hue <span id="v-force2">5</span></label>
     <input type="range" id="force2" min="1" max="10" step="0.1" value="5">
   </div>
   <div class="control">
-    <label>Nb Items — Tiles <span id="v-nbitems">1</span></label>
-    <input type="range" id="nbitems" min="1" max="20" step="1" value="1">
+    <label>Nb Items -- Tiles / Density <span id="v-nbitems">1</span></label>
+    <input type="range" id="nbitems" min="1" max="64" step="1" value="1">
   </div>
   <div class="control">
     <label>Speed <span id="v-speed">1</span></label>
@@ -52,21 +80,27 @@
 <script>
 const canvas = document.getElementById('c');
 const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+const errorEl = document.getElementById('error');
 
-const fragSrc = `
+const UNIFORMS = `
 precision highp float;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform float iForce;
 uniform float iForce2;
 uniform float iNbItems;
+`;
 
+const HSV2RGB = `
 vec3 hsv2rgb(float h, float s, float v) {
     vec3 c = vec3(h, s, v);
     vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
     return c.z * mix(vec3(1.0), rgb, c.y);
 }
+`;
 
+const SHADERS = {
+  'gradient-ramp': UNIFORMS + HSV2RGB + `
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
     float hue1 = (iForce - 1.0) / 9.0;
@@ -77,44 +111,132 @@ void main() {
     float t = fract(uv.y * tiles - iTime * 0.2);
     vec3 col = mix(color1, color2, t);
     gl_FragColor = vec4(col, 1.0);
-}
-`;
+}`,
 
-const vertSrc = `attribute vec2 pos; void main() { gl_Position = vec4(pos, 0.0, 1.0); }`;
+  'plasma': UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float freq = max(iNbItems, 1.0) * 0.25;
+    float t = iTime * 0.4;
+    float v1 = sin(uv.x * freq * 10.0 + t);
+    float v2 = sin(uv.y * freq * 8.0 - t * 0.7);
+    float v3 = sin((uv.x + uv.y) * freq * 6.0 + t * 0.5);
+    vec2 center = uv - 0.5;
+    float dist = length(center);
+    float v4 = sin(dist * freq * 12.0 - t * 0.9);
+    float plasma = (v1 + v2 + v3 + v4) * 0.25 * 0.5 + 0.5;
+    vec3 col = mix(color1, color2, plasma);
+    gl_FragColor = vec4(col, 1.0);
+}`,
 
-function compile(gl, type, src) {
+  'color-wash': UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float baseHue = (iForce - 1.0) / 9.0;
+    float spread = (iForce2 - 1.0) / 9.0 * 0.5;
+    float wave = max(iNbItems, 1.0);
+    float t = iTime * 0.08;
+    float grad = (uv.x + uv.y) * 0.5;
+    float wobble = 0.0;
+    if (wave > 1.5) {
+        float w = wave * 0.15;
+        wobble += sin(uv.x * w * 6.0 + t * 2.0) * 0.12;
+        wobble += sin(uv.y * w * 5.0 - t * 1.5) * 0.10;
+        wobble += sin((uv.x - uv.y) * w * 3.0 + t) * 0.08;
+    }
+    float hue = fract(baseHue + grad * spread + wobble + t);
+    vec3 col = hsv2rgb(hue, 1.0, 1.0);
+    gl_FragColor = vec4(col, 1.0);
+}`
+};
+
+const vertSrc = 'attribute vec2 pos; void main() { gl_Position = vec4(pos, 0.0, 1.0); }';
+
+let currentProg = null;
+let currentVs = null;
+let currentFs = null;
+let raf = 0;
+
+function compile(type, src) {
   const s = gl.createShader(type);
   gl.shaderSource(s, src);
   gl.compileShader(s);
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-    console.error(gl.getShaderInfoLog(s));
+    errorEl.textContent = 'Shader error: ' + gl.getShaderInfoLog(s);
+    errorEl.style.display = 'block';
     return null;
   }
   return s;
 }
 
-const prog = gl.createProgram();
-gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, vertSrc));
-gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, fragSrc));
-gl.linkProgram(prog);
-gl.useProgram(prog);
+function loadShader(name) {
+  // Clean up previous
+  if (currentProg) {
+    gl.deleteProgram(currentProg);
+    if (currentVs) gl.deleteShader(currentVs);
+    if (currentFs) gl.deleteShader(currentFs);
+  }
+  cancelAnimationFrame(raf);
+  errorEl.style.display = 'none';
 
-const buf = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-const posLoc = gl.getAttribLocation(prog, 'pos');
-gl.enableVertexAttribArray(posLoc);
-gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+  const fragSrc = SHADERS[name];
+  if (!fragSrc) return;
 
-const uTime = gl.getUniformLocation(prog, 'iTime');
-const uRes = gl.getUniformLocation(prog, 'iResolution');
-const uForce = gl.getUniformLocation(prog, 'iForce');
-const uForce2 = gl.getUniformLocation(prog, 'iForce2');
-const uNb Items = gl.getUniformLocation(prog, 'iNbItems');
+  currentVs = compile(gl.VERTEX_SHADER, vertSrc);
+  currentFs = compile(gl.FRAGMENT_SHADER, fragSrc);
+  if (!currentVs || !currentFs) return;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, currentVs);
+  gl.attachShader(prog, currentFs);
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  currentProg = prog;
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const posLoc = gl.getAttribLocation(prog, 'pos');
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+  const start = performance.now();
+  function frame() {
+    const speedVal = parseFloat(elSpeed.value);
+    const t = (performance.now() - start) / 1000 * speedVal;
+
+    gl.uniform1f(gl.getUniformLocation(prog, 'iTime'), t);
+    gl.uniform2f(gl.getUniformLocation(prog, 'iResolution'), canvas.width, canvas.height);
+    gl.uniform1f(gl.getUniformLocation(prog, 'iForce'), parseFloat(elForce.value));
+    gl.uniform1f(gl.getUniformLocation(prog, 'iForce2'), parseFloat(elForce2.value));
+    gl.uniform1f(gl.getUniformLocation(prog, 'iNbItems'), parseFloat(elNbItems.value));
+
+    document.getElementById('v-force').textContent = parseFloat(elForce.value).toFixed(1);
+    document.getElementById('v-force2').textContent = parseFloat(elForce2.value).toFixed(1);
+    document.getElementById('v-nbitems').textContent = elNbItems.value;
+    document.getElementById('v-speed').textContent = parseFloat(elSpeed.value).toFixed(2);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    raf = requestAnimationFrame(frame);
+  }
+  frame();
+
+  // Update active button
+  document.querySelectorAll('.toolbar button').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.shader === name);
+  });
+
+  // Update page title
+  document.title = 'Shader Preview -- ' + name;
+}
 
 const elForce = document.getElementById('force');
 const elForce2 = document.getElementById('force2');
-const elNb Items = document.getElementById('nbitems');
+const elNbItems = document.getElementById('nbitems');
 const elSpeed = document.getElementById('speed');
 
 function resize() {
@@ -125,26 +247,13 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-const start = performance.now();
-function frame() {
-  const speedVal = parseFloat(elSpeed.value);
-  const t = (performance.now() - start) / 1000 * speedVal;
+// Shader switching
+document.querySelectorAll('.toolbar button').forEach(function(btn) {
+  btn.addEventListener('click', function() { loadShader(btn.dataset.shader); });
+});
 
-  gl.uniform1f(uTime, t);
-  gl.uniform2f(uRes, canvas.width, canvas.height);
-  gl.uniform1f(uForce, parseFloat(elForce.value));
-  gl.uniform1f(uForce2, parseFloat(elForce2.value));
-  gl.uniform1f(uNb Items, parseFloat(elNb Items.value));
-
-  document.getElementById('v-force').textContent = parseFloat(elForce.value).toFixed(1);
-  document.getElementById('v-force2').textContent = parseFloat(elForce2.value).toFixed(1);
-  document.getElementById('v-nbitems').textContent = elNb Items.value;
-  document.getElementById('v-speed').textContent = parseFloat(elSpeed.value).toFixed(2);
-
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  requestAnimationFrame(frame);
-}
-frame();
+// Load default
+loadShader('gradient-ramp');
 </script>
 </body>
 </html>

@@ -5,20 +5,24 @@ import type { MediaParameter } from '../../api/media';
 import '@material/web/button/outlined-button.js';
 
 // --- GLSL source for our custom shaders ---
-const GRADIENT_RAMP_SRC = `
+const HSV2RGB = `
+vec3 hsv2rgb(float h, float s, float v) {
+    vec3 c = vec3(h, s, v);
+    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+    return c.z * mix(vec3(1.0), rgb, c.y);
+}
+`;
+
+const UNIFORMS = `
 precision highp float;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform float iForce;
 uniform float iForce2;
 uniform float iNbItems;
+`;
 
-vec3 hsv2rgb(float h, float s, float v) {
-    vec3 c = vec3(h, s, v);
-    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
-    return c.z * mix(vec3(1.0), rgb, c.y);
-}
-
+const GRADIENT_RAMP_SRC = UNIFORMS + HSV2RGB + `
 void main() {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
     float hue1 = (iForce - 1.0) / 9.0;
@@ -27,18 +31,222 @@ void main() {
     vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
     float tiles = max(iNbItems, 1.0);
     float t = fract(uv.y * tiles - iTime * 0.2);
-    vec3 col = mix(color1, color2, t);
+    float blend = 1.0 - abs(2.0 * t - 1.0);
+    vec3 col = mix(color1, color2, blend);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const PLASMA_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float freq = max(iNbItems, 1.0) * 0.25;
+    float t = iTime * 0.4;
+    float v1 = sin(uv.x * freq * 10.0 + t);
+    float v2 = sin(uv.y * freq * 8.0 - t * 0.7);
+    float v3 = sin((uv.x + uv.y) * freq * 6.0 + t * 0.5);
+    vec2 center = uv - 0.5;
+    float dist = length(center);
+    float v4 = sin(dist * freq * 12.0 - t * 0.9);
+    float plasma = (v1 + v2 + v3 + v4) * 0.25 * 0.5 + 0.5;
+    vec3 col = mix(color1, color2, plasma);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const COLOR_WASH_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float baseHue = (iForce - 1.0) / 9.0;
+    float spread = (iForce2 - 1.0) / 9.0 * 0.5;
+    float wave = max(iNbItems, 1.0);
+    float t = iTime * 0.08;
+    float grad = (uv.x + uv.y) * 0.5;
+    float wobble = 0.0;
+    if (wave > 1.5) {
+        float w = wave * 0.15;
+        wobble += sin(uv.x * w * 6.0 + t * 2.0) * 0.12;
+        wobble += sin(uv.y * w * 5.0 - t * 1.5) * 0.10;
+        wobble += sin((uv.x - uv.y) * w * 3.0 + t) * 0.08;
+    }
+    float hue = fract(baseHue + grad * spread + wobble + t);
+    vec3 col = hsv2rgb(hue, 1.0, 1.0);
     gl_FragColor = vec4(col, 1.0);
 }
 `;
 
 const VERT_SRC = `attribute vec2 pos; void main() { gl_Position = vec4(pos, 0.0, 1.0); }`;
 
-// Map ELM parameter IDs to our custom shaders' GLSL source
-// Add more entries here as you create new shaders
+const STROBE_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float rate = max(iNbItems, 1.0) * 2.0;
+    float t = step(0.5, fract(iTime * rate));
+    vec3 col = mix(color1, color2, t);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const PULSE_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float rate = max(iNbItems, 1.0) * 0.3;
+    float phase = (uv.x + uv.y) * 3.14;
+    float t = 0.5 + 0.5 * sin(iTime * rate + phase);
+    vec3 col = mix(color1, color2, t);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const RAINBOW_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float startHue = (iForce - 1.0) / 9.0;
+    float range = (iForce2 - 1.0) / 9.0 + 0.5;
+    float bands = max(iNbItems, 1.0);
+    float t = fract(uv.y * bands - iTime * 0.15);
+    float hue = fract(startHue + t * range);
+    vec3 col = hsv2rgb(hue, 1.0, 1.0);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const CHECKER_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float grid = max(iNbItems, 1.0) * 2.0;
+    vec2 cell = floor((uv + vec2(0.0, iTime * 0.1)) * grid);
+    float check = mod(cell.x + cell.y, 2.0);
+    vec3 col = mix(color1, color2, check);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const FIRE_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 0.3);
+    float turb = max(iNbItems, 1.0) * 0.5;
+    float t = iTime * 1.5;
+    float n = 0.0;
+    n += sin(uv.x * turb * 4.0 + t * 1.1) * 0.3;
+    n += sin(uv.x * turb * 8.0 - t * 0.9) * 0.2;
+    n += sin((uv.x * 2.0 + uv.y) * turb * 3.0 + t * 1.3) * 0.25;
+    float flame = clamp(1.0 - uv.y + n * 0.5, 0.0, 1.0);
+    flame = pow(flame, 1.5);
+    vec3 col = mix(color2, color1, flame);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const SCAN_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 0.15);
+    float width = 1.0 / max(iNbItems, 1.0);
+    float pos = fract(iTime * 0.3);
+    float dist = abs(uv.y - pos);
+    dist = min(dist, 1.0 - dist);
+    float beam = smoothstep(width, 0.0, dist);
+    vec3 col = mix(color2, color1, beam);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const SPIRAL_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    vec2 center = uv - 0.5;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float arms = max(iNbItems, 1.0);
+    float angle = atan(center.y, center.x);
+    float dist = length(center);
+    float spiral = sin(angle * arms + dist * 12.0 - iTime * 2.0) * 0.5 + 0.5;
+    vec3 col = mix(color1, color2, spiral);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const RIPPLE_SRC = UNIFORMS + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    vec2 center = uv - 0.5;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 1.0);
+    float rings = max(iNbItems, 1.0);
+    float dist = length(center);
+    float ripple = sin(dist * rings * 12.0 - iTime * 3.0) * 0.5 + 0.5;
+    vec3 col = mix(color1, color2, ripple);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const SPARKLE_SRC = UNIFORMS + `
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+` + HSV2RGB + `
+void main() {
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    float hue1 = (iForce - 1.0) / 9.0;
+    float hue2 = (iForce2 - 1.0) / 9.0;
+    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
+    vec3 color2 = hsv2rgb(hue2, 1.0, 0.15);
+    float density = max(iNbItems, 1.0) * 2.0;
+    vec2 cell = floor(uv * density);
+    float rnd = hash(cell);
+    float twinkle = sin(iTime * (2.0 + rnd * 4.0) + rnd * 6.28);
+    twinkle = max(0.0, twinkle);
+    twinkle = pow(twinkle, 4.0);
+    float active = step(0.6, rnd);
+    twinkle *= active;
+    vec3 col = mix(color2, color1, twinkle);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+// Map ELM media slot names to our custom shaders' GLSL source
 const SHADER_SOURCES: Record<string, string> = {
   'gradient ramp': GRADIENT_RAMP_SRC,
   'gradient-ramp': GRADIENT_RAMP_SRC,
+  'plasma': PLASMA_SRC,
+  'color wash': COLOR_WASH_SRC,
+  'color-wash': COLOR_WASH_SRC,
+  'strobe': STROBE_SRC,
+  'pulse': PULSE_SRC,
+  'rainbow': RAINBOW_SRC,
+  'checker': CHECKER_SRC,
+  'fire': FIRE_SRC,
+  'scan': SCAN_SRC,
+  'spiral': SPIRAL_SRC,
+  'ripple': RIPPLE_SRC,
+  'sparkle': SPARKLE_SRC,
 };
 
 function compileShader(gl: WebGLRenderingContext, type: number, src: string) {

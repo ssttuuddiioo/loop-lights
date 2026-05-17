@@ -155,6 +155,13 @@ function serveStatic(req, res) {
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+  // Cache policy: HTML never cached (so new builds are picked up immediately),
+  // hashed assets (JS/CSS) cached forever (hash changes on rebuild).
+  const isHTML = ext === '.html' || filePath.endsWith('index.html');
+  const cacheHeader = isHTML
+    ? 'no-cache, no-store, must-revalidate'
+    : 'public, max-age=31536000, immutable';
+
   fs.readFile(filePath, (err, data) => {
     if (err) {
       // SPA fallback: serve index.html for any missing file
@@ -164,12 +171,12 @@ function serveStatic(req, res) {
           res.end('Not Found');
           return;
         }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache, no-store, must-revalidate' });
         res.end(indexData);
       });
       return;
     }
-    res.writeHead(200, { 'Content-Type': contentType });
+    res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': cacheHeader });
     res.end(data);
   });
 }
@@ -184,7 +191,9 @@ function proxyToElm(req, res) {
   };
 
   const proxyReq = http.request(options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    // API data must never be cached — stage names, parameters, etc. must always be fresh
+    const headers = { ...proxyRes.headers, 'cache-control': 'no-store' };
+    res.writeHead(proxyRes.statusCode, headers);
     proxyRes.pipe(res, { end: true });
   });
 

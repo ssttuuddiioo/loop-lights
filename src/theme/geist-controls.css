@@ -174,7 +174,7 @@
 }
 
 .geist-icon-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-faint);
   color: var(--app-text);
   border-color: var(--app-border2);
 }
@@ -203,6 +203,6 @@
 }
 
 .geist-close-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-faint);
   color: var(--app-text);
 }

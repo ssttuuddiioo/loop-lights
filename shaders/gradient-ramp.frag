@@ -26,8 +26,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float tiles = max(iNbItems + 0.0, 1.0);
 
     // Scrolling gradient (Speed param controls iTime rate)
+    // Triangle wave: color1 at edges, color2 in the middle, seamless loop
     float t = fract(uv.y * tiles - iTime * 0.2);
+    float blend = 1.0 - abs(2.0 * t - 1.0);
 
-    vec3 col = mix(color1, color2, t);
+    vec3 col = mix(color1, color2, blend);
     fragColor = vec4(col, 1.0);
 }

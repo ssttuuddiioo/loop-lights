@@ -60,12 +60,25 @@ export function AppNav() {
       gap: '4px',
       zIndex: 200,
     }}>
-      {/* Logo dot */}
-      <div style={{
-        width: 32, height: 32, borderRadius: '50%',
-        background: 'linear-gradient(135deg, #5e6ad2, #7170ff)',
-        marginBottom: 20, flexShrink: 0,
-      }} />
+      {/* Logo — starburst */}
+      <svg width="32" height="32" viewBox="0 0 100 100" style={{ marginBottom: 20, flexShrink: 0 }}>
+        {Array.from({ length: 24 }, (_, i) => {
+          const angle = (i * 360) / 24;
+          const rad = (angle * Math.PI) / 180;
+          const x2 = 50 + Math.cos(rad) * 46;
+          const y2 = 50 + Math.sin(rad) * 46;
+          return (
+            <line
+              key={i}
+              x1="50" y1="50" x2={x2} y2={y2}
+              stroke="var(--app-text)"
+              stroke-width="3.5"
+              stroke-linecap="round"
+            />
+          );
+        })}
+        <circle cx="50" cy="50" r="12" fill="var(--app-bg)" stroke="var(--app-text)" stroke-width="3" />
+      </svg>
 
       {NAV_ITEMS.map(({ href, label, icon }) => {
         const isActive = href === '/'

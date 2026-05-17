@@ -7,4 +7,8 @@ import './theme/m3-overrides.css';
 import './theme/geist-controls.css';
 import './theme/responsive.css';
 
+// Apply saved theme before first paint to prevent flash
+const savedTheme = localStorage.getItem('dimly-theme');
+if (savedTheme === 'light') document.documentElement.dataset.theme = 'light';
+
 render(<App />, document.getElementById('app')!);
