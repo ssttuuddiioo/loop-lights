@@ -14,17 +14,6 @@ import { EffectsTab } from './effects-tab';
 
 type Tab = 'media' | 'effects' | 'presets';
 
-const SHADER_KEYS = [
-  'gradient ramp', 'plasma', 'color wash',
-  'strobe', 'pulse', 'rainbow', 'checker',
-  'fire', 'scan', 'spiral', 'ripple', 'sparkle',
-];
-
-function isShaderSlot(name: string): boolean {
-  const lower = name.toLowerCase();
-  return SHADER_KEYS.some(k => lower.includes(k));
-}
-
 const VIDEO_EXTS = /\.(mp4|mov|avi|gif|png|jpg|jpeg|webm|webp)$/i;
 function isVideoSlot(name: string): boolean { return VIDEO_EXTS.test(name); }
 
