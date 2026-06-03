@@ -75,3 +75,24 @@ export async function refreshControllerHealth(): Promise<HealthResponse> {
   if (!res.ok) throw new Error(`Health refresh failed: ${res.status}`);
   return res.json() as Promise<HealthResponse>;
 }
+
+/** Admin gate for the Controllers page (separate password) */
+export async function getAdminStatus(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/admin/status');
+    if (!res.ok) return false;
+    const j = await res.json();
+    return !!j.admin;
+  } catch {
+    return false;
+  }
+}
+
+export async function adminLogin(password: string): Promise<boolean> {
+  const res = await fetch('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  return res.ok;
+}

@@ -32,17 +32,8 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    href: '/controllers',
-    label: 'Controllers',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="4" width="16" height="16" rx="2" />
-        <circle cx="9" cy="9" r="1.5" fill="currentColor" /><circle cx="15" cy="9" r="1.5" fill="currentColor" />
-        <circle cx="9" cy="15" r="1.5" fill="currentColor" /><circle cx="15" cy="15" r="1.5" fill="currentColor" />
-      </svg>
-    ),
-  },
+  // Controllers is intentionally NOT listed here — it lives behind the admin
+  // password at /controllers (see src/pages/controllers.tsx).
 ] as const;
 
 export function AppNav() {

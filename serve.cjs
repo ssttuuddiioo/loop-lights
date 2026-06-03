@@ -32,8 +32,16 @@ const COOKIE_SECRET = crypto.randomBytes(32).toString('hex');
 const COOKIE_NAME = 'stage-auth';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
+// Separate admin password gating the Controllers page (set ADMIN_PASSWORD in .env to override)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Studio365!@';
+const ADMIN_COOKIE_NAME = 'stage-admin';
+
 function makeToken() {
   return crypto.createHmac('sha256', COOKIE_SECRET).update(PASSWORD).digest('hex');
+}
+
+function makeAdminToken() {
+  return crypto.createHmac('sha256', COOKIE_SECRET).update('admin:' + ADMIN_PASSWORD).digest('hex');
 }
 
 function parseCookies(cookieHeader) {
@@ -49,6 +57,11 @@ function parseCookies(cookieHeader) {
 function isAuthenticated(req) {
   const cookies = parseCookies(req.headers.cookie);
   return cookies[COOKIE_NAME] === makeToken();
+}
+
+function isAdmin(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  return cookies[ADMIN_COOKIE_NAME] === makeAdminToken();
 }
 
 const LOGIN_PAGE = `<!DOCTYPE html>
@@ -277,17 +290,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- Advatek health API (requires auth) ---
+  // --- Advatek health API (requires main auth + admin password) ---
   const cleanUrl = req.url.split('?')[0].replace(/\/$/, '');
   if (cleanUrl === '/api/health/controllers' && req.method === 'GET') {
-    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    if (!isAuthenticated(req) || !isAdmin(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(monitor.getAll()));
     return;
   }
 
-  if (req.url.startsWith('/api/health/controllers/') && req.method === 'GET') {
-    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+  if (req.url.startsWith('/api/health/controllers/') && req.url !== '/api/health/controllers/refresh' && req.method === 'GET') {
+    if (!isAuthenticated(req) || !isAdmin(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
     const ip = req.url.replace('/api/health/controllers/', '').split('?')[0];
     const data = monitor.getOne(ip);
     if (!data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Controller not found' })); return; }
@@ -297,7 +310,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.url === '/api/health/controllers/refresh' && req.method === 'POST') {
-    if (!isAuthenticated(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    if (!isAuthenticated(req) || !isAdmin(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
     controllerList.forEach(c => monitor._poll(c));
     setTimeout(() => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -411,6 +424,42 @@ const server = http.createServer((req, res) => {
   if (cleanUrl === '/api/astro' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(engine.getAstroTimes()));
+    return;
+  }
+
+  // --- Admin gate for the Controllers page (separate password) ---
+  if (cleanUrl === '/api/admin/status' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ admin: isAdmin(req) }));
+    return;
+  }
+
+  if (cleanUrl === '/api/admin/login' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      let pw = '';
+      try { pw = (JSON.parse(body || '{}').password) || ''; } catch { pw = ''; }
+      if (pw === ADMIN_PASSWORD) {
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Set-Cookie': `${ADMIN_COOKIE_NAME}=${makeAdminToken()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`,
+        });
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false }));
+      }
+    });
+    return;
+  }
+
+  if (cleanUrl === '/api/admin/logout' && req.method === 'POST') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Set-Cookie': `${ADMIN_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+    });
+    res.end(JSON.stringify({ success: true }));
     return;
   }
 
