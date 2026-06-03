@@ -289,6 +289,20 @@ const PARAM_MAP: Record<string, string> = {
   'media-param-speed': 'iSpeed',
 };
 
+// Match a preset to an ELM media slot, tolerant of ELM's naming.
+// Normalizes case + strips non-alphanumerics so "Gradient-ramp" matches the
+// "gradient ramp" key, and a filename-derived "plasma.frag" matches "plasma".
+// Uses equality-or-prefix (not substring) so e.g. "Happy rainbow" does NOT
+// falsely match the "rainbow" preset.
+function findSlotForKey<T extends { name: string }>(slots: T[], key: string): T | undefined {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const k = norm(key);
+  return slots.find(s => {
+    const n = norm(s.name);
+    return n === k || n.startsWith(k);
+  });
+}
+
 // ─── EffectsTab component ──────────────────────────────────────────
 
 export function EffectsTab() {
@@ -313,9 +327,7 @@ export function EffectsTab() {
   const preset = PRESETS[activePreset];
 
   // Find the ELM media slot that matches the active preset
-  const matchingSlot = mediaSlots.find(s =>
-    s.name.toLowerCase().includes(preset.key)
-  );
+  const matchingSlot = findSlotForKey(mediaSlots, preset.key);
 
   // Fetch ELM parameters when slot is found
   useEffect(() => {
@@ -400,7 +412,7 @@ export function EffectsTab() {
   // Apply shader to target stage(s)
   const applyToStages = useCallback((presetIndex: number) => {
     const p = PRESETS[presetIndex];
-    const slot = mediaSlots.find(s => s.name.toLowerCase().includes(p.key));
+    const slot = findSlotForKey(mediaSlots, p.key);
     if (!slot || MOCK_ENABLED) return;
 
     if (target === null) {
