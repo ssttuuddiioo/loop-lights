@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:shaders": "node scripts/build-shaders.cjs",
     "preview": "vite preview",
     "serve": "node serve.cjs"
   },

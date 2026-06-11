@@ -8,6 +8,7 @@
 const fs = require('fs');
 const http = require('http');
 const SunCalc = require('suncalc');
+const safeColor = require('./safe-color.cjs');
 
 class SceneEngine {
   constructor(configPath, elmBaseUrl) {
@@ -212,10 +213,27 @@ class SceneEngine {
   }
 
   saveScene(sceneId, scene) {
-    this.config.scenes[sceneId] = scene;
+    this.config.scenes[sceneId] = this._clampSceneColors(scene);
     this._persistConfig();
     console.log(`  [scene-engine] Saved scene "${sceneId}"`);
     return { success: true, sceneId };
+  }
+
+  // Snap every stored stage color out of the glitch zone so scenes.json never
+  // persists a forbidden color (config uses 0.0-1.0 floats; clamp works in 0-255).
+  _clampSceneColors(scene) {
+    if (!scene || !scene.stages) return scene;
+    for (const cfg of Object.values(scene.stages)) {
+      if (!cfg || !cfg.color) continue;
+      const { red = 0, green = 0, blue = 0 } = cfg.color;
+      const safe = safeColor.clampRgbSafe(
+        Math.round(red * 255), Math.round(green * 255), Math.round(blue * 255)
+      );
+      cfg.color.red = safe.r / 255;
+      cfg.color.green = safe.g / 255;
+      cfg.color.blue = safe.b / 255;
+    }
+    return scene;
   }
 
   deleteScene(sceneId) {
@@ -347,7 +365,9 @@ class SceneEngine {
       const req = http.request({
         hostname: parsed.hostname,
         port: parsed.port,
-        path: urlPath,
+        // Glitch-zone floor: scene activations (manual/clock/astro) bypass the
+        // serve.cjs proxy, so clamp here too.
+        path: safeColor.clampElmLiveUrl(urlPath),
         method: 'POST',
         headers: { 'Content-Length': '0' },
         timeout: 5000

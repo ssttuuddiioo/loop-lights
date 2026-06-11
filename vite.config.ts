@@ -77,6 +77,14 @@ export default defineConfig({
         target: process.env.VITE_SERVE_URL || 'http://localhost:4201',
         changeOrigin: true,
       },
+      '/api/calibrate': {
+        target: process.env.VITE_SERVE_URL || 'http://localhost:4201',
+        changeOrigin: true,
+      },
+      '/api/safe-color': {
+        target: process.env.VITE_SERVE_URL || 'http://localhost:4201',
+        changeOrigin: true,
+      },
     },
   },
   build: {

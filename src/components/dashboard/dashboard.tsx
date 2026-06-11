@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
+import { useIsMobile } from '../../hooks/use-media-query';
 import { postStageIntensity } from '../../api/stages';
 import {
   getScenes, getSceneStatus, activateScene, toggleTrigger,
   saveScene, deleteScene, updateTrigger,
 } from '../../api/scenes';
 import type { Scene, SceneStatus, FullTrigger } from '../../api/scenes';
+import { clampHexSafe } from '../../lib/safe-color';
 import {
   MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS, MOCK_TRIGGERS,
 } from '../../api/mock';
@@ -130,7 +132,7 @@ function StageStatusGrid() {
       }}>
         Zone Control
       </div>
-      <div style={{
+      <div class="dash-zone-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
         gap: '10px',
@@ -168,6 +170,7 @@ interface ZoneConfig {
 
 function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
   const { stages, mediaSlots } = useAppState();
+  const isMobile = useIsMobile();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -239,6 +242,80 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
         {stages.map((stage) => {
           const config = zones[stage.name];
           if (!config) return null;
+
+          const mediaSelect = (
+            <select
+              value={config.media}
+              onChange={(e) => updateZone(stage.name, 'media', parseInt((e.target as HTMLSelectElement).value))}
+              style={{
+                background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
+                borderRadius: '6px', padding: '4px 8px',
+                color: 'var(--app-text)', fontSize: '11px', fontFamily: 'var(--font-sans)',
+                width: isMobile ? undefined : '140px', flex: isMobile ? 1 : undefined,
+                minWidth: 0, flexShrink: 0, outline: 'none',
+              }}
+            >
+              {mediaSlots.map(slot => (
+                <option key={slot.id} value={Number(slot.id)}>{Number(slot.id)}. {slot.name}</option>
+              ))}
+            </select>
+          );
+          const colorInput = (
+            <input
+              type="color" value={config.color}
+              onInput={(e) => updateZone(stage.name, 'color', clampHexSafe((e.target as HTMLInputElement).value))}
+              style={{ width: '28px', height: '28px', border: '1px solid var(--app-border)', borderRadius: '4px', padding: 0, cursor: 'pointer', background: 'transparent', flexShrink: 0 }}
+            />
+          );
+          const rangeInput = (
+            <input
+              type="range" min={0} max={100}
+              value={Math.round(config.intensity * 100)}
+              onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
+              style={{ flex: 1, minWidth: 0, height: '4px', accentColor: config.color, cursor: 'pointer' }}
+            />
+          );
+          const pct = (
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', width: '36px', textAlign: 'right' as const, flexShrink: 0 }}>
+              {Math.round(config.intensity * 100)}%
+            </span>
+          );
+          const nameLabel = (
+            <span style={{
+              fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+              color: 'var(--app-text-secondary)',
+              width: isMobile ? undefined : '90px', flex: isMobile ? 1 : undefined,
+              minWidth: 0, flexShrink: 0,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {stage.name}
+            </span>
+          );
+
+          // Mobile: stacked card so nothing runs off-screen.
+          if (isMobile) {
+            return (
+              <div key={stage.name} style={{
+                display: 'flex', flexDirection: 'column', gap: '6px',
+                padding: '8px 10px',
+                background: 'var(--app-surface)',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {colorInput}
+                  {nameLabel}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {mediaSelect}
+                  {rangeInput}
+                  {pct}
+                </div>
+              </div>
+            );
+          }
+
+          // Desktop: single row.
           return (
             <div key={stage.name} style={{
               display: 'flex', alignItems: 'center', gap: '10px',
@@ -247,40 +324,11 @@ function PresetEditor({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
               borderRadius: '6px',
               border: '1px solid rgba(255,255,255,0.05)',
             }}>
-              <span style={{
-                fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
-                color: 'var(--app-text-secondary)', width: '90px', flexShrink: 0,
-              }}>
-                {stage.name}
-              </span>
-              <select
-                value={config.media}
-                onChange={(e) => updateZone(stage.name, 'media', parseInt((e.target as HTMLSelectElement).value))}
-                style={{
-                  background: 'var(--app-surface3)', border: '1px solid var(--app-border)',
-                  borderRadius: '6px', padding: '4px 8px',
-                  color: 'var(--app-text)', fontSize: '11px', fontFamily: 'var(--font-sans)',
-                  width: '140px', flexShrink: 0, outline: 'none',
-                }}
-              >
-                {mediaSlots.map(slot => (
-                  <option key={slot.id} value={Number(slot.id)}>{Number(slot.id)}. {slot.name}</option>
-                ))}
-              </select>
-              <input
-                type="color" value={config.color}
-                onInput={(e) => updateZone(stage.name, 'color', (e.target as HTMLInputElement).value)}
-                style={{ width: '28px', height: '28px', border: '1px solid var(--app-border)', borderRadius: '4px', padding: 0, cursor: 'pointer', background: 'transparent', flexShrink: 0 }}
-              />
-              <input
-                type="range" min={0} max={100}
-                value={Math.round(config.intensity * 100)}
-                onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
-                style={{ flex: 1, height: '4px', accentColor: config.color, cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', width: '32px', textAlign: 'right' as const }}>
-                {Math.round(config.intensity * 100)}%
-              </span>
+              {nameLabel}
+              {mediaSelect}
+              {colorInput}
+              {rangeInput}
+              {pct}
             </div>
           );
         })}
@@ -366,7 +414,7 @@ function PresetsSection() {
           Presets
         </div>
       </div>
-      <div style={{
+      <div class="dash-preset-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
         gap: '8px',

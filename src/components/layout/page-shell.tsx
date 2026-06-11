@@ -38,12 +38,12 @@ export function PageShell({ children }: { children: ComponentChildren }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AppNav />
-      <div style={{
-        marginLeft: 'var(--sidebar-width)',
+      <div class="app-content" style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
+        minWidth: 0,
       }}>
         <GlobalToolbar />
         <main style={{ flex: 1, overflow: 'auto' }}>{children}</main>

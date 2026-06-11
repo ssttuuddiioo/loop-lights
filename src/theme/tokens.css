@@ -65,6 +65,12 @@
   --sidebar-width: 80px;
   --sidebar-bg: #0f1011;
 
+  /* Responsive breakpoints (reference only — CSS @media can't read var()).
+     Keep the literal 600px / 900px in responsive.css in sync with these. */
+  --bp-phone: 600px;
+  --bp-tablet: 900px;
+  --touch-target: 44px;
+
   /* Spacing scale */
   --space-1: 4px;
   --space-2: 8px;

@@ -19,8 +19,36 @@ export interface MediaParameter {
   remoteName: string;
 }
 
+// ELM is inconsistent across versions: older builds return `name` as an object
+// ({ id, default, value }); the current venue build returns it as a plain string
+// (e.g. "Force", "Speed-Ex"). Parse the raw shape, then normalize to the object
+// form every consumer in the app already expects (name.id / name.value).
+interface RawMediaParameter extends Omit<MediaParameter, 'name'> {
+  name: string | { id?: string; default?: string; value?: string };
+}
+
 interface MediaParametersResponse {
-  parameters: MediaParameter[];
+  parameters: RawMediaParameter[];
+}
+
+// Map an ELM parameter's display name to the canonical id the UI keys on —
+// PARAM_MAP, HUE_PARAMS, and the preview uniforms all reference these ids.
+function canonicalParamId(displayName: string): string {
+  const n = displayName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (n === 'force') return 'media-param-force';
+  if (n === 'force2') return 'media-param-force-2';
+  if (n === 'nbitems' || n === 'complexity' || n === 'density') return 'media-param-nb-items';
+  if (n === 'speed' || n === 'speedex') return 'media-param-speed';
+  return 'media-param-' + n;
+}
+
+function normalizeParam(raw: RawMediaParameter): MediaParameter {
+  const n = raw.name;
+  // `display` is the human label AND the identifier ELM expects back on POST
+  // (the POST path is /parameters/{display}); `id` is our stable internal key.
+  const display = typeof n === 'string' ? n : (n?.value ?? n?.default ?? n?.id ?? '');
+  const id = (n && typeof n === 'object' && n.id) ? n.id : canonicalParamId(display);
+  return { ...raw, name: { id, default: display, value: display } };
 }
 
 export async function getMediaSlots(): Promise<MediaSlot[]> {
@@ -38,7 +66,7 @@ export function buildThumbnailUrl(slotId: string | number, etag: string): string
 
 export async function getMediaParameters(slotId: string | number): Promise<MediaParameter[]> {
   const data = await elmGet<MediaParametersResponse>(`media/slots/${slotId}/parameters`);
-  return data.parameters || [];
+  return (data.parameters || []).map(normalizeParam);
 }
 
 export async function postMediaParameter(

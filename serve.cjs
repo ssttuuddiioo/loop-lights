@@ -19,6 +19,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const safeColor = require('./src/safe-color.cjs');
 
 const PORT = parseInt(process.env.PORT || '4200', 10);
 const ELM_HOST = process.env.ELM_HOST || 'localhost';
@@ -198,7 +199,9 @@ function proxyToElm(req, res) {
   const options = {
     hostname: ELM_HOST,
     port: ELM_PORT,
-    path: req.url, // /elm/... passes through as-is
+    // Glitch-zone floor: rewrite any /stages/{id}/live red/green/blue out of the
+    // forbidden HSV region before it reaches ELM. Non-color URLs pass through.
+    path: safeColor.clampElmLiveUrl(req.url),
     method: req.method,
     headers: { ...req.headers, host: `${ELM_HOST}:${ELM_PORT}` },
   };
@@ -217,6 +220,21 @@ function proxyToElm(req, res) {
   });
 
   req.pipe(proxyReq, { end: true });
+}
+
+// Raw POST to ELM that deliberately BYPASSES the glitch-zone clamp — used only
+// by the admin-gated /api/calibrate/push so calibration can probe the unsafe
+// region at the fixtures to find the real boundary.
+function rawElmPost(elmPath, cb) {
+  const r = http.request({
+    hostname: ELM_HOST, port: ELM_PORT, path: elmPath,
+    method: 'POST', headers: { 'Content-Length': '0' }, timeout: 5000,
+  }, (proxyRes) => {
+    proxyRes.on('data', () => {});
+    proxyRes.on('end', () => cb(null));
+  });
+  r.on('error', cb);
+  r.end();
 }
 
 // --- Advatek Controller Monitoring ---
@@ -460,6 +478,62 @@ const server = http.createServer((req, res) => {
       'Set-Cookie': `${ADMIN_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
     });
     res.end(JSON.stringify({ success: true }));
+    return;
+  }
+
+  // --- Safe-color / glitch-zone calibration ---
+
+  // Current forbidden zone — read by the client snap and the /calibrate tool.
+  if (cleanUrl === '/api/safe-color' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ...safeColor.getZone(), calibration: safeColor.getCalibration() }));
+    return;
+  }
+
+  // Push a RAW (unclamped) color to a stage so calibration can find the glitch
+  // boundary at the fixtures. Admin-gated — this is the only unclamped door.
+  if (cleanUrl === '/api/calibrate/push' && req.method === 'POST') {
+    if (!isAuthenticated(req) || !isAdmin(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    const p = new URLSearchParams(req.url.split('?')[1] || '');
+    const stage = p.get('stage');
+    if (!stage) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'missing stage' }));
+      return;
+    }
+    const qp = ['red', 'green', 'blue', 'intensity']
+      .filter(k => p.has(k))
+      .map(k => `${k}=${encodeURIComponent(p.get(k))}`);
+    const elmPath = `/elm/stages/${encodeURIComponent(stage)}/live?${qp.join('&')}`;
+    rawElmPost(elmPath, (err) => {
+      if (err) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    });
+    return;
+  }
+
+  // Save a calibrated zone (sMin/vMax/achromaticEps + raw marks). Admin-gated.
+  if (cleanUrl === '/api/calibrate/save' && req.method === 'POST') {
+    if (!isAuthenticated(req) || !isAdmin(req)) { res.writeHead(401); res.end('Unauthorized'); return; }
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body || '{}');
+        safeColor.setZone(data);
+        safeColor.saveToDisk();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, zone: safeColor.getZone() }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
     return;
   }
 

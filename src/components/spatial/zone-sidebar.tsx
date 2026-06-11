@@ -7,9 +7,11 @@ import { MediaSection } from '../stage/media-section';
 interface ZoneSidebarProps {
   stageIndex: number | null;
   onClose: () => void;
+  /** Render inline as a stacked card (mobile) instead of a right-side drawer. */
+  inline?: boolean;
 }
 
-export function ZoneSidebar({ stageIndex, onClose }: ZoneSidebarProps) {
+export function ZoneSidebar({ stageIndex, onClose, inline = false }: ZoneSidebarProps) {
   const { stages, masterLevel, blackout } = useAppState();
   const dispatch = useAppDispatch();
 
@@ -33,6 +35,90 @@ export function ZoneSidebar({ stageIndex, onClose }: ZoneSidebarProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const header = (
+    <div style={{
+      padding: '16px 16px 12px',
+      borderBottom: '1px solid var(--app-border)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexShrink: 0,
+    }}>
+      <div>
+        <div style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '16px',
+          fontWeight: 700,
+          letterSpacing: '0.03em',
+        }}>
+          {stage?.name ?? ''}
+        </div>
+        <div style={{ fontSize: '10px', color: 'var(--app-muted)', marginTop: '2px' }}>
+          {stageIndex !== null ? `ZONE ${String(stageIndex + 1).padStart(2, '0')}` : ''}
+        </div>
+      </div>
+      <button
+        onClick={onClose}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--app-muted)',
+          fontSize: '18px',
+          cursor: 'pointer',
+          padding: '4px',
+          lineHeight: 1,
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+
+  const content = stage && stageIndex !== null && (
+    <div style={{
+      padding: '16px',
+      overflowY: 'auto',
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px',
+    }}>
+      <VerticalFader
+        stage={stage}
+        stageIndex={stageIndex}
+        effectiveIntensity={effectiveIntensity}
+        color={stage.color}
+      />
+
+      <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
+
+      <ColorSection stage={stage} stageIndex={stageIndex} onOpenModal={openColorModal} />
+
+      <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
+
+      <MediaSection stage={stage} stageIndex={stageIndex} onOpenModal={openMediaModal} />
+    </div>
+  );
+
+  // Inline (mobile): fills the bottom-shelf tab body while a zone is selected.
+  if (inline) {
+    if (!open) return null;
+    return (
+      <div style={{
+        flex: 1,
+        minHeight: 0,
+        background: 'var(--app-surface)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+        {header}
+        {content}
+      </div>
+    );
+  }
+
+  // Desktop: right-side sliding drawer.
   return (
     <div style={{
       position: 'absolute',
@@ -49,70 +135,8 @@ export function ZoneSidebar({ stageIndex, onClose }: ZoneSidebarProps) {
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      {/* Header */}
-      <div style={{
-        padding: '16px 16px 12px',
-        borderBottom: '1px solid var(--app-border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexShrink: 0,
-      }}>
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '16px',
-            fontWeight: 700,
-            letterSpacing: '0.03em',
-          }}>
-            {stage?.name ?? ''}
-          </div>
-          <div style={{ fontSize: '10px', color: 'var(--app-muted)', marginTop: '2px' }}>
-            {stageIndex !== null ? `ZONE ${String(stageIndex + 1).padStart(2, '0')}` : ''}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--app-muted)',
-            fontSize: '18px',
-            cursor: 'pointer',
-            padding: '4px',
-            lineHeight: 1,
-          }}
-        >
-          ×
-        </button>
-      </div>
-
-      {/* Content */}
-      {stage && stageIndex !== null && (
-        <div style={{
-          padding: '16px',
-          overflowY: 'auto',
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}>
-          <VerticalFader
-            stage={stage}
-            stageIndex={stageIndex}
-            effectiveIntensity={effectiveIntensity}
-            color={stage.color}
-          />
-
-          <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
-
-          <ColorSection stage={stage} stageIndex={stageIndex} onOpenModal={openColorModal} />
-
-          <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
-
-          <MediaSection stage={stage} stageIndex={stageIndex} onOpenModal={openMediaModal} />
-        </div>
-      )}
+      {header}
+      {content}
     </div>
   );
 }

@@ -45,11 +45,9 @@ export function MasterFader() {
         tabIndex={0}
         style={{
           position: 'relative',
-          width: '170px',
           height: '34px',
           touchAction: 'none',
           cursor: 'ew-resize',
-          flex: '0 0 auto',
         }}
         {...handlers}
       >

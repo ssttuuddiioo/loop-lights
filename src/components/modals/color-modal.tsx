@@ -3,6 +3,7 @@ import { useAppState, useAppDispatch } from '../../state/context';
 import { useFavorites } from '../../hooks/use-favorites';
 import { postStageColor } from '../../api/stages';
 import { hexToRgb } from '../../lib/color-utils';
+import { clampHexSafe } from '../../lib/safe-color';
 import { SWATCHES } from '../../lib/constants';
 
 export function ColorPanel() {
@@ -14,7 +15,8 @@ export function ColorPanel() {
 
   const setColor = useCallback((hex: string) => {
     if (colorModalStageIndex === null) return;
-    dispatch({ type: 'SET_STAGE_COLOR', index: colorModalStageIndex, hex });
+    // Snap the swatch/preview out of the glitch zone immediately.
+    dispatch({ type: 'SET_STAGE_COLOR', index: colorModalStageIndex, hex: clampHexSafe(hex) });
   }, [dispatch, colorModalStageIndex]);
 
   const close = useCallback(async () => {
@@ -54,6 +56,7 @@ export function ColorPanel() {
       {/* Native picker */}
       <input
         type="color"
+        class="color-picker-input"
         value={stage.color}
         onInput={(e) => setColor((e.target as HTMLInputElement).value)}
         onChange={async (e) => {

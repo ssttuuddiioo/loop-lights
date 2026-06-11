@@ -1,4 +1,5 @@
 import { elmGet, elmPost } from './client';
+import { clampRgbSafe } from '../lib/safe-color';
 import type { StageInfo, StageLive } from '../types/stage';
 
 interface StagesResponse {
@@ -19,7 +20,9 @@ export async function postStageIntensity(stageId: string | number, intensity: nu
 }
 
 export async function postStageColor(stageId: string | number, r: number, g: number, b: number): Promise<void> {
-  await elmPost(`stages/${encodeURIComponent(stageId)}/live?red=${r}&green=${g}&blue=${b}`);
+  // Glitch-zone floor (also covers dev, where the node proxy isn't in the path).
+  const safe = clampRgbSafe(r, g, b);
+  await elmPost(`stages/${encodeURIComponent(stageId)}/live?red=${safe.r}&green=${safe.g}&blue=${safe.b}`);
 }
 
 export async function postStageMedia(stageId: string | number, mediaId: string | number): Promise<void> {

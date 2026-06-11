@@ -4,6 +4,7 @@ import { postStageMedia } from '../../api/stages';
 import { getMediaParameters, postMediaParameter } from '../../api/media';
 import type { MediaParameter } from '../../api/media';
 import { MOCK_ENABLED } from '../../api/mock';
+import { getSafeZone } from '../../lib/safe-color';
 
 // ─── GLSL shared pieces ────────────────────────────────────────────
 
@@ -14,6 +15,41 @@ vec3 hsv2rgb(float h, float s, float v) {
     return c.z * mix(vec3(1.0), rgb, c.y);
 }
 `;
+
+// Glitch-zone clamp for the preview — mirrors src/lib/safe-color.ts so the
+// canvas shows exactly what the fixtures will (forbidden corner pushed out).
+// Thresholds arrive as uniforms, so re-calibration is reflected live.
+const SAFE_COLOR = `
+uniform float uSafeSMin;
+uniform float uSafeVMax;
+uniform float uSafeEps;
+vec3 safeRgb2hsv(vec3 c) {
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+vec3 safeColor(vec3 rgb) {
+    vec3 hsv = safeRgb2hsv(rgb);
+    float s = hsv.y, v = hsv.z;
+    if (s < uSafeSMin && v > uSafeVMax) {
+        if (s < uSafeEps) v = uSafeVMax;
+        else if (uSafeSMin - s <= v - uSafeVMax) s = uSafeSMin;
+        else v = uSafeVMax;
+        return hsv2rgb(hsv.x, s, v);
+    }
+    return rgb;
+}
+`;
+
+/** Inject the safe-color clamp into a preset's GLSL and wrap its output. */
+function withSafeColor(fragSrc: string): string {
+  return fragSrc
+    .replace('void main()', SAFE_COLOR + '\nvoid main()')
+    .replace('gl_FragColor = vec4(col, 1.0)', 'gl_FragColor = vec4(safeColor(col), 1.0)');
+}
 
 const UNIFORMS = `
 precision highp float;
@@ -72,29 +108,6 @@ void main() {
     float v4 = sin(dist * freq * 12.0 - t * 0.9);
     float plasma = (v1 + v2 + v3 + v4) * 0.25 * 0.5 + 0.5;
     vec3 col = mix(color1, color2, plasma);
-    gl_FragColor = vec4(col, 1.0);
-}`,
-  },
-  {
-    name: 'Color Wash',
-    key: 'color wash',
-    fragSrc: UNIFORMS + HSV2RGB + `
-void main() {
-    vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    float baseHue = (iForce - 1.0) / 9.0;
-    float spread = (iForce2 - 1.0) / 9.0 * 0.5;
-    float wave = max(iNbItems, 1.0);
-    float t = iTime * 0.08;
-    float grad = (uv.x + uv.y) * 0.5;
-    float wobble = 0.0;
-    if (wave > 1.5) {
-        float w = wave * 0.15;
-        wobble += sin(uv.x * w * 6.0 + t * 2.0) * 0.12;
-        wobble += sin(uv.y * w * 5.0 - t * 1.5) * 0.10;
-        wobble += sin((uv.x - uv.y) * w * 3.0 + t) * 0.08;
-    }
-    float hue = fract(baseHue + grad * spread + wobble + t);
-    vec3 col = hsv2rgb(hue, 1.0, 1.0);
     gl_FragColor = vec4(col, 1.0);
 }`,
   },
@@ -240,32 +253,6 @@ void main() {
     gl_FragColor = vec4(col, 1.0);
 }`,
   },
-  {
-    name: 'Sparkle',
-    key: 'sparkle',
-    fragSrc: UNIFORMS + `
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-` + HSV2RGB + `
-void main() {
-    vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    float hue1 = (iForce - 1.0) / 9.0;
-    float hue2 = (iForce2 - 1.0) / 9.0;
-    vec3 color1 = hsv2rgb(hue1, 1.0, 1.0);
-    vec3 color2 = hsv2rgb(hue2, 1.0, 0.15);
-    float density = max(iNbItems, 1.0) * 2.0;
-    vec2 cell = floor(uv * density);
-    float rnd = hash(cell);
-    float twinkle = sin(iTime * (2.0 + rnd * 4.0) + rnd * 6.28);
-    twinkle = max(0.0, twinkle);
-    twinkle = pow(twinkle, 4.0);
-    float active = step(0.6, rnd);
-    twinkle *= active;
-    vec3 col = mix(color2, color1, twinkle);
-    gl_FragColor = vec4(col, 1.0);
-}`,
-  },
 ];
 
 // ─── WebGL helpers ─────────────────────────────────────────────────
@@ -353,7 +340,7 @@ export function EffectsTab() {
     if (!prog) return;
 
     const vs = compileShader(gl, gl.VERTEX_SHADER, VERT_SRC);
-    const fs = compileShader(gl, gl.FRAGMENT_SHADER, preset.fragSrc);
+    const fs = compileShader(gl, gl.FRAGMENT_SHADER, withSafeColor(preset.fragSrc));
     if (!vs || !fs) return;
 
     gl.attachShader(prog, vs);
@@ -400,6 +387,11 @@ export function EffectsTab() {
       gl.uniform1f(gl.getUniformLocation(prog, 'iForce'), paramValues['media-param-force'] ?? 1);
       gl.uniform1f(gl.getUniformLocation(prog, 'iForce2'), paramValues['media-param-force-2'] ?? 5);
       gl.uniform1f(gl.getUniformLocation(prog, 'iNbItems'), paramValues['media-param-nb-items'] ?? 1);
+
+      const zone = getSafeZone();
+      gl.uniform1f(gl.getUniformLocation(prog, 'uSafeSMin'), zone.sMin);
+      gl.uniform1f(gl.getUniformLocation(prog, 'uSafeVMax'), zone.vMax);
+      gl.uniform1f(gl.getUniformLocation(prog, 'uSafeEps'), zone.achromaticEps);
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       rafRef.current = requestAnimationFrame(frame);

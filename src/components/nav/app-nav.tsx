@@ -1,6 +1,14 @@
+import type { ComponentChildren } from 'preact';
 import { Link, useLocation } from 'wouter-preact';
 
-const NAV_ITEMS = [
+export interface NavItem {
+  href: string;
+  label: string;
+  icon: ComponentChildren;
+}
+
+/** Primary pages — shown in the desktop sidebar and the mobile drawer. */
+export const NAV_ITEMS: NavItem[] = [
   {
     href: '/',
     label: '3D',
@@ -32,9 +40,33 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  // Controllers is intentionally NOT listed here — it lives behind the admin
-  // password at /controllers (see src/pages/controllers.tsx).
-] as const;
+];
+
+/** Admin pages — password-gated and URL-only (intentionally absent from all menus). */
+export const ADMIN_NAV_ITEMS: NavItem[] = [
+  {
+    href: '/controllers',
+    label: 'Controllers',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="8" rx="1" /><rect x="2" y="13" width="20" height="8" rx="1" />
+        <line x1="6" y1="7" x2="6.01" y2="7" /><line x1="6" y1="17" x2="6.01" y2="17" />
+      </svg>
+    ),
+  },
+  {
+    href: '/calibrate',
+    label: 'Calibrate',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
+        <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
+        <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+        <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
+      </svg>
+    ),
+  },
+];
 
 export function AppNav() {
   const [location] = useLocation();

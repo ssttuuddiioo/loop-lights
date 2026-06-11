@@ -18,16 +18,21 @@ export function BankNav() {
         {Array.from({ length: totalBanks }, (_, i) => (
           <div
             key={i}
+            class="bank-dot-hit"
             onClick={() => dispatch({ type: 'SET_BANK', bank: i })}
             style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <div style={{
               width: '6px', height: '6px', borderRadius: '50%',
               background: i === currentBank ? 'var(--app-accent)' : 'var(--app-border2)',
               opacity: i === currentBank ? 1 : 0.45,
               transform: i === currentBank ? 'scale(1.2)' : 'none',
               transition: 'transform 0.15s, opacity 0.15s, background 0.15s',
-              cursor: 'pointer',
-            }}
-          />
+            }} />
+          </div>
         ))}
       </div>
 

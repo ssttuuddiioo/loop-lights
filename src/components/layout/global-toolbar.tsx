@@ -1,6 +1,7 @@
 import { useAppState } from '../../state/context';
 import { MasterFader } from '../controls/master-fader';
 import { BlackoutButton } from '../controls/blackout-button';
+import { MobileNav } from '../nav/mobile-drawer';
 import { useTheme } from '../../hooks/use-theme';
 
 function StatChip({ label, value }: { label: string; value: string | number }) {
@@ -74,8 +75,9 @@ export function GlobalToolbar() {
       gap: '16px',
       flexWrap: 'wrap',
     }}>
-      {/* Left: stat chips */}
+      {/* Left: hamburger (mobile) + stat chips */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+        <MobileNav />
         <StatChip label="Stages" value={stages.length} />
         <StatChip label="Master Level" value={`${masterLevel}%`} />
         <StatChip label="Media" value={mediaSlots.length} />

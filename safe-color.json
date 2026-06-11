@@ -1,0 +1,18 @@
+{
+  "sMin": 0.45,
+  "vMax": 0.6,
+  "achromaticEps": 0.04,
+  "calibration": {
+    "note": "Forbidden 'glitch zone' = low saturation + high value (washed-out near-white). Owned by the /calibrate tool; do not hand-edit as the source of truth. sMin/vMax are a pre-calibration estimate of the blue-box region; run /calibrate to pin them to the real fixture boundary, then `npm run build:shaders` and re-import the .frag into ELM.",
+    "hues": [
+      0,
+      60,
+      120,
+      180,
+      240,
+      300,
+      "gray"
+    ],
+    "marks": []
+  }
+}

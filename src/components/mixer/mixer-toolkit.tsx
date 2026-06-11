@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
+import { useIsMobile } from '../../hooks/use-media-query';
 import { postStageMedia } from '../../api/stages';
 import { buildThumbnailUrl } from '../../api/media';
 import {
@@ -7,6 +8,7 @@ import {
   saveScene, deleteScene,
 } from '../../api/scenes';
 import type { Scene, SceneStatus } from '../../api/scenes';
+import { clampHexSafe } from '../../lib/safe-color';
 import {
   MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS,
 } from '../../api/mock';
@@ -298,6 +300,7 @@ function PresetEditor({ stages, mediaSlots, onSaved, onCancel }: {
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const isMobile = useIsMobile();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [pickingZone, setPickingZone] = useState<string | null>(null);
@@ -359,48 +362,86 @@ function PresetEditor({ stages, mediaSlots, onSaved, onCancel }: {
           if (!config) return null;
           const selectedSlot = mediaSlots.find(s => Number(s.id) === config.media);
           const isPicking = pickingZone === stage.name;
+
+          const thumb = (
+            <div
+              onClick={() => setPickingZone(isPicking ? null : stage.name)}
+              style={{
+                width: '36px', height: '36px', borderRadius: '4px',
+                backgroundImage: selectedSlot ? `url('${buildThumbnailUrl(selectedSlot.id, selectedSlot.thumbnailETag)}')` : 'none',
+                backgroundSize: 'cover', backgroundPosition: 'center',
+                background: selectedSlot ? undefined : 'var(--app-surface3)',
+                border: `1px solid ${isPicking ? 'var(--app-accent)' : 'var(--app-border)'}`,
+                cursor: 'pointer', flexShrink: 0,
+              }}
+            />
+          );
+          const colorInput = (
+            <input
+              type="color" value={config.color}
+              onInput={(e) => updateZone(stage.name, 'color', clampHexSafe((e.target as HTMLInputElement).value))}
+              style={{ width: '22px', height: '22px', border: '1px solid var(--app-border)', borderRadius: '3px', padding: 0, cursor: 'pointer', background: 'transparent', flexShrink: 0 }}
+            />
+          );
+          const rangeInput = (
+            <input
+              type="range" min={0} max={100}
+              value={Math.round(config.intensity * 100)}
+              onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
+              style={{ flex: 1, height: '3px', accentColor: config.color, cursor: 'pointer', minWidth: isMobile ? 0 : '40px' }}
+            />
+          );
+          const pct = (
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', width: '28px', textAlign: 'right' as const, flexShrink: 0 }}>
+              {Math.round(config.intensity * 100)}%
+            </span>
+          );
+
           return (
             <div key={stage.name} style={{
               display: 'flex', flexDirection: 'column', gap: '4px',
               padding: '6px 8px', background: 'var(--app-surface)',
               borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
-                  fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 510,
-                  color: 'var(--app-text-secondary)', width: '70px', flexShrink: 0,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{stage.name}</span>
-                <div
-                  onClick={() => setPickingZone(isPicking ? null : stage.name)}
-                  style={{
-                    width: '36px', height: '36px', borderRadius: '4px',
-                    backgroundImage: selectedSlot ? `url('${buildThumbnailUrl(selectedSlot.id, selectedSlot.thumbnailETag)}')` : 'none',
-                    backgroundSize: 'cover', backgroundPosition: 'center',
-                    background: selectedSlot ? undefined : 'var(--app-surface3)',
-                    border: `1px solid ${isPicking ? 'var(--app-accent)' : 'var(--app-border)'}`,
-                    cursor: 'pointer', flexShrink: 0,
-                  }}
-                />
-                <span style={{
-                  fontSize: '9px', fontFamily: 'var(--font-sans)', color: 'var(--app-muted)',
-                  flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{selectedSlot?.name || '—'}</span>
-                <input
-                  type="color" value={config.color}
-                  onInput={(e) => updateZone(stage.name, 'color', (e.target as HTMLInputElement).value)}
-                  style={{ width: '22px', height: '22px', border: '1px solid var(--app-border)', borderRadius: '3px', padding: 0, cursor: 'pointer', background: 'transparent', flexShrink: 0 }}
-                />
-                <input
-                  type="range" min={0} max={100}
-                  value={Math.round(config.intensity * 100)}
-                  onInput={(e) => updateZone(stage.name, 'intensity', parseInt((e.target as HTMLInputElement).value) / 100)}
-                  style={{ flex: 1, height: '3px', accentColor: config.color, cursor: 'pointer', minWidth: '40px' }}
-                />
-                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--app-muted)', width: '28px', textAlign: 'right' as const }}>
-                  {Math.round(config.intensity * 100)}%
-                </span>
-              </div>
+              {isMobile ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {thumb}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+                        color: 'var(--app-text-secondary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{stage.name}</div>
+                      <div style={{
+                        fontSize: '9px', fontFamily: 'var(--font-sans)', color: 'var(--app-muted)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{selectedSlot?.name || '—'}</div>
+                    </div>
+                    {colorInput}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {rangeInput}
+                    {pct}
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{
+                    fontSize: '10px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+                    color: 'var(--app-text-secondary)', width: '70px', flexShrink: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{stage.name}</span>
+                  {thumb}
+                  <span style={{
+                    fontSize: '9px', fontFamily: 'var(--font-sans)', color: 'var(--app-muted)',
+                    flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{selectedSlot?.name || '—'}</span>
+                  {colorInput}
+                  {rangeInput}
+                  {pct}
+                </div>
+              )}
               {isPicking && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '3px', maxHeight: '140px', overflow: 'auto' }}>
                   {mediaSlots.map(slot => {

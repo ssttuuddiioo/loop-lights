@@ -1,9 +1,10 @@
 import { useRef, useEffect, useCallback, useState } from 'preact/hooks';
 import { useAppState } from '../../state/context';
+import { useIsMobile } from '../../hooks/use-media-query';
 import { buildThumbnailUrl } from '../../api/media';
 import { ZoneSidebar } from './zone-sidebar';
-import { getScenes, getSceneStatus, activateScene } from '../../api/scenes';
-import type { Scene, SceneStatus } from '../../api/scenes';
+import { getScenes, getSceneStatus, activateScene, saveScene } from '../../api/scenes';
+import type { Scene, SceneStatus, StageConfig } from '../../api/scenes';
 import { MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS } from '../../api/mock';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -31,6 +32,8 @@ export function SpatialView() {
   const [selectedZone, setSelectedZone] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'zones' | 'presets'>('zones');
+  const isMobile = useIsMobile();
 
   // @ts-ignore
   const sceneRef = useRef<any>(null);
@@ -344,6 +347,7 @@ export function SpatialView() {
       const hits = raycaster.intersectObjects(ctx.zoneHitBoxes);
       if (hits.length > 0) {
         setSelectedZone(hits[0].object.userData.zoneIndex as number);
+        setActiveTab('zones'); // surface the controls in the bottom shelf
       } else {
         setSelectedZone(null);
       }
@@ -384,40 +388,74 @@ export function SpatialView() {
   const closeModal = useCallback(() => setSelectedZone(null), []);
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 80px)', position: 'relative', background: '#1a1a1e' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+    <div style={{
+      width: '100%', height: 'calc(100vh - 80px)',
+      position: 'relative', background: '#1a1a1e',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {/* 3D scene — top (halved on mobile to make room for the shelf) */}
+      <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0 }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      {loading && !error && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--app-muted)', fontFamily: 'var(--font-mono)', fontSize: '13px',
-        }}>
-          Loading 3D venue...
-        </div>
+        {loading && !error && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--app-muted)', fontFamily: 'var(--font-mono)', fontSize: '13px',
+          }}>
+            Loading 3D venue...
+          </div>
+        )}
+
+        {error && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#ee4444', fontFamily: 'var(--font-mono)', fontSize: '13px',
+          }}>
+            {error}
+          </div>
+        )}
+
+        <ZoneLabels />
+
+        {/* Desktop: presets float over the bottom-center of the scene */}
+        {!isMobile && <PresetDock variant="floating" />}
+      </div>
+
+      {/* Mobile: tabbed bottom shelf (Zones / Presets) fills the lower half */}
+      {isMobile && (
+        <BottomShelf
+          selectedZone={selectedZone}
+          onSelectZone={setSelectedZone}
+          onCloseZone={closeModal}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
       )}
 
-      {error && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#ee4444', fontFamily: 'var(--font-mono)', fontSize: '13px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      <ZoneLabels />
-      <PresetDock />
-
-      <ZoneSidebar stageIndex={selectedZone} onClose={closeModal} />
+      {/* Desktop: zone controls slide in from the right */}
+      {!isMobile && <ZoneSidebar stageIndex={selectedZone} onClose={closeModal} />}
     </div>
   );
 }
 
-function PresetDock() {
+function hexToRgb01(hex: string): { red: number; green: number; blue: number } {
+  const h = (hex || '#ffffff').replace('#', '');
+  return {
+    red: parseInt(h.substring(0, 2), 16) / 255,
+    green: parseInt(h.substring(2, 4), 16) / 255,
+    blue: parseInt(h.substring(4, 6), 16) / 255,
+  };
+}
+
+function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
+  const { stages } = useAppState();
   const [scenes, setScenes] = useState<Record<string, Scene>>(MOCK_ENABLED ? MOCK_SCENES : {});
   const [status, setStatus] = useState<SceneStatus | null>(MOCK_ENABLED ? MOCK_SCENE_STATUS : null);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(() => {
     if (MOCK_ENABLED) return;
@@ -441,40 +479,263 @@ function PresetDock() {
     window.dispatchEvent(new Event('dimly:force-sync'));
   };
 
+  // Save the current live state of every zone as a new preset.
+  const handleCreate = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    const id = trimmed.toLowerCase().replace(/\s+/g, '-');
+    const stagesConfig: Record<string, StageConfig> = {};
+    for (const stage of stages) {
+      stagesConfig[stage.name] = {
+        media: Number(stage.mediaId) || 0,
+        intensity: stage.intensity / 100,
+        speed: stage.speed ?? 0.5,
+        color: hexToRgb01(stage.color),
+      };
+    }
+    try {
+      if (MOCK_ENABLED) {
+        setScenes(prev => ({ ...prev, [id]: { name: trimmed, description: 'Custom preset', stages: {} } }));
+      } else {
+        await saveScene({ id, scene: { name: trimmed, description: 'Custom preset', stages: stagesConfig } });
+      }
+    } catch (err) {
+      console.error('Failed to save preset:', err);
+    }
+    setSaving(false);
+    setCreating(false);
+    setNewName('');
+    refresh();
+  };
+
   const entries = Object.entries(scenes);
-  if (entries.length === 0) return null;
+
+  // ── Floating pill (desktop) — overlays the bottom-center of the scene ──
+  if (variant === 'floating') {
+    if (entries.length === 0) return null;
+    return (
+      <div style={{
+        position: 'absolute', bottom: '20px', left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex', gap: '6px',
+        padding: '6px',
+        background: 'rgba(15,16,17,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        pointerEvents: 'auto',
+      }}>
+        {entries.map(([id, scene]) => {
+          const isActive = status?.activeScene === id;
+          return (
+            <button key={id} onClick={() => handleActivate(id)} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: isActive ? 'var(--app-accent)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${isActive ? 'var(--app-accent)' : 'transparent'}`,
+              boxShadow: isActive ? '0 0 12px rgba(94,106,210,0.3)' : 'none',
+              color: isActive ? '#fff' : 'var(--app-text-secondary)',
+              fontSize: '12px', fontFamily: 'var(--font-sans)',
+              fontWeight: isActive ? 590 : 510,
+              letterSpacing: '-0.01em',
+              transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
+            }}>{scene.name}</button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Bottom section (mobile) — grid + "+ New", fills the shelf tab body ──
+  return (
+    <div style={{
+      flex: 1, minHeight: 0, overflowY: 'auto',
+      padding: '14px 16px',
+    }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        {entries.map(([id, scene]) => {
+          const isActive = status?.activeScene === id;
+          return (
+            <button key={id} onClick={() => handleActivate(id)} style={{
+              all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+              textAlign: 'center',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              background: isActive ? 'var(--app-accent)' : 'var(--app-surface2)',
+              border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border2)'}`,
+              color: isActive ? '#fff' : 'var(--app-text-secondary)',
+              fontSize: '13px', fontFamily: 'var(--font-sans)',
+              fontWeight: isActive ? 600 : 510,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              transition: 'all 0.15s',
+            }}>{scene.name}</button>
+          );
+        })}
+
+        {!creating && (
+          <button onClick={() => setCreating(true)} style={{
+            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+            textAlign: 'center',
+            padding: '12px 14px',
+            borderRadius: '8px',
+            background: 'transparent',
+            border: '1px dashed var(--app-border2)',
+            color: 'var(--app-accent)',
+            fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+            transition: 'all 0.15s',
+          }}>+ New</button>
+        )}
+      </div>
+
+      {creating && (
+        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+          <input
+            type="text" autofocus placeholder="Preset name…"
+            value={newName}
+            onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
+            style={{
+              flex: 1, minWidth: 0,
+              background: 'var(--app-surface2)',
+              border: '1px solid var(--app-border2)',
+              borderRadius: '6px', padding: '10px 12px',
+              color: 'var(--app-text)', fontSize: '13px',
+              fontFamily: 'var(--font-sans)', outline: 'none',
+            }}
+          />
+          <button onClick={handleCreate} disabled={saving || !newName.trim()} style={{
+            all: 'unset', boxSizing: 'border-box',
+            cursor: saving || !newName.trim() ? 'default' : 'pointer',
+            padding: '10px 16px', borderRadius: '6px',
+            background: 'var(--app-accent)', color: '#fff',
+            fontSize: '13px', fontWeight: 600,
+            opacity: !newName.trim() ? 0.5 : 1,
+          }}>{saving ? 'Saving…' : 'Save'}</button>
+          <button onClick={() => { setCreating(false); setNewName(''); }} style={{
+            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+            padding: '10px 14px', borderRadius: '6px',
+            background: 'var(--app-surface2)', border: '1px solid var(--app-border2)',
+            color: 'var(--app-text-secondary)', fontSize: '13px',
+          }}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Mobile bottom shelf: tabbed (Zones / Presets) ─────────────────────
+type ShelfTab = 'zones' | 'presets';
+
+function BottomShelf({ selectedZone, onSelectZone, onCloseZone, activeTab, onTabChange }: {
+  selectedZone: number | null;
+  onSelectZone: (i: number) => void;
+  onCloseZone: () => void;
+  activeTab: ShelfTab;
+  onTabChange: (t: ShelfTab) => void;
+}) {
+  return (
+    <div style={{
+      flex: '1 1 0', minHeight: 0,
+      display: 'flex', flexDirection: 'column',
+      borderTop: '1px solid var(--app-border2)',
+      background: 'var(--app-surface)',
+    }}>
+      {/* Tab bar */}
+      <div style={{
+        display: 'flex', gap: '4px',
+        padding: '8px 12px',
+        borderBottom: '1px solid var(--app-border)',
+        flexShrink: 0,
+      }}>
+        <TabButton label="Zones" active={activeTab === 'zones'} onClick={() => onTabChange('zones')} />
+        <TabButton label="Presets" active={activeTab === 'presets'} onClick={() => onTabChange('presets')} />
+      </div>
+
+      {/* Tab body */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {activeTab === 'zones' && (
+          selectedZone === null
+            ? <AllZonesStrip onSelect={onSelectZone} />
+            : <ZoneSidebar inline stageIndex={selectedZone} onClose={onCloseZone} />
+        )}
+        {activeTab === 'presets' && <PresetDock variant="section" />}
+      </div>
+    </div>
+  );
+}
+
+function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+      padding: '7px 14px', borderRadius: '7px',
+      background: active ? 'var(--app-surface2)' : 'transparent',
+      border: `1px solid ${active ? 'var(--app-border2)' : 'transparent'}`,
+      color: active ? 'var(--app-text)' : 'var(--app-muted)',
+      fontSize: '13px', fontFamily: 'var(--font-sans)',
+      fontWeight: active ? 600 : 510, letterSpacing: '-0.01em',
+      transition: 'all 0.15s',
+    }}>{label}</button>
+  );
+}
+
+function AllZonesStrip({ onSelect }: { onSelect: (i: number) => void }) {
+  const { stages, masterLevel, blackout } = useAppState();
+
+  if (stages.length === 0) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'var(--app-muted)', fontFamily: 'var(--font-mono)', fontSize: '12px',
+      }}>
+        No zones
+      </div>
+    );
+  }
 
   return (
     <div style={{
-      position: 'absolute', bottom: '20px', left: '50%',
-      transform: 'translateX(-50%)',
-      display: 'flex', gap: '6px',
-      padding: '6px',
-      background: 'rgba(15,16,17,0.85)',
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      borderRadius: '12px',
-      border: '1px solid rgba(255,255,255,0.08)',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-      pointerEvents: 'auto',
+      flex: 1, minHeight: 0, overflowY: 'auto',
+      padding: '14px 16px',
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px',
+      alignContent: 'start',
     }}>
-      {entries.map(([id, scene]) => {
-        const isActive = status?.activeScene === id;
+      {stages.map((stage, i) => {
+        const level = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
+        const lit = level > 0;
         return (
-          <button key={id} onClick={() => handleActivate(id)} style={{
-            all: 'unset', cursor: 'pointer',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            background: isActive ? 'var(--app-accent)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${isActive ? 'var(--app-accent)' : 'transparent'}`,
-            boxShadow: isActive ? '0 0 12px rgba(94,106,210,0.3)' : 'none',
-            color: isActive ? '#fff' : 'var(--app-text-secondary)',
-            fontSize: '12px', fontFamily: 'var(--font-sans)',
-            fontWeight: isActive ? 590 : 510,
-            letterSpacing: '-0.01em',
+          <button key={stage.id} onClick={() => onSelect(i)} style={{
+            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '10px 12px', borderRadius: '8px',
+            background: 'var(--app-surface2)',
+            border: '1px solid var(--app-border2)',
             transition: 'all 0.15s',
-            whiteSpace: 'nowrap',
-          }}>{scene.name}</button>
+          }}>
+            <div style={{
+              width: '14px', height: '14px', borderRadius: '4px',
+              background: stage.color, flexShrink: 0,
+              opacity: lit ? 1 : 0.3,
+              boxShadow: lit ? `0 0 8px ${stage.color}` : 'none',
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+                color: 'var(--app-text)',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{stage.name}</div>
+            </div>
+            <div style={{
+              fontSize: '11px', fontFamily: 'var(--font-mono)',
+              color: lit ? 'var(--app-text-secondary)' : 'var(--app-muted)',
+              flexShrink: 0,
+            }}>{level}%</div>
+          </button>
         );
       })}
     </div>

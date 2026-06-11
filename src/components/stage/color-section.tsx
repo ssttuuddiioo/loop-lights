@@ -4,6 +4,7 @@ import { useAppDispatch } from '../../state/context';
 import { ColorSwatch } from '../controls/color-swatch';
 import { postStageColor } from '../../api/stages';
 import { hexToRgb } from '../../lib/color-utils';
+import { clampHexSafe } from '../../lib/safe-color';
 import { SWATCHES, COLOR_THROTTLE_MS } from '../../lib/constants';
 import type { StageState } from '../../types/stage';
 
@@ -19,10 +20,11 @@ export const ColorSection = memo(function ColorSection({ stage, stageIndex }: Co
   const dispatch = useAppDispatch();
 
   const setColor = useCallback((hex: string) => {
-    dispatch({ type: 'SET_STAGE_COLOR', index: stageIndex, hex });
+    const safe = clampHexSafe(hex); // snap out of the glitch zone
+    dispatch({ type: 'SET_STAGE_COLOR', index: stageIndex, hex: safe });
     if (colorTimers[stageIndex]) clearTimeout(colorTimers[stageIndex]);
     colorTimers[stageIndex] = setTimeout(() => {
-      const { r, g, b } = hexToRgb(hex);
+      const { r, g, b } = hexToRgb(safe);
       postStageColor(stage.id, r, g, b).catch(console.error);
     }, COLOR_THROTTLE_MS);
   }, [dispatch, stageIndex, stage.id]);
@@ -39,6 +41,7 @@ export const ColorSection = memo(function ColorSection({ stage, stageIndex }: Co
       ))}
       <input
         type="color"
+        class="color-picker-input"
         value={stage.color}
         onInput={(e) => setColor((e.target as HTMLInputElement).value)}
         style={{

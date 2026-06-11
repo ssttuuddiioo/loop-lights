@@ -15,18 +15,41 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-/* ===== Phone (max-width: 600px) ===== */
-@media (max-width: 600px) {
-  /* Hide sidebar on phone */
+/* Content sits right of the fixed desktop sidebar; the mobile hamburger is hidden. */
+.app-content {
+  margin-left: var(--sidebar-width);
+}
+
+.mobile-hamburger {
+  display: none;
+}
+
+/* Master fader track — fixed on desktop, flexes to fit the stacked topbar on mobile. */
+.master-track {
+  width: 170px;
+  flex: 0 0 auto;
+}
+
+/* ===== Compact: phone + tablet (max-width: 900px) — swap sidebar for drawer ===== */
+@media (max-width: 900px) {
   .sidebar {
     display: none !important;
   }
-
-  /* Remove sidebar margin */
-  #app > div > div {
-    margin-left: 0 !important;
+  .app-content {
+    margin-left: 0;
   }
+  .mobile-hamburger {
+    display: flex;
+  }
+  .master-track {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+}
 
+/* ===== Phone (max-width: 600px) ===== */
+@media (max-width: 600px) {
   /* Top bar: stack into two rows */
   .topbar {
     flex-direction: column;
@@ -120,5 +143,52 @@
 
   .fader-wrap {
     height: 140px;
+  }
+}
+
+/* ===== Compact + landscape: use the extra width for more fader columns ===== */
+@media (max-width: 900px) and (orientation: landscape) {
+  .stage-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ===== Touch devices: enlarge tap targets to ~44px (desktop untouched) ===== */
+@media (pointer: coarse) {
+  .color-swatch {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .color-picker-input {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .geist-icon-btn,
+  .geist-close-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .bank-dot-hit {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+/* ===== Dashboard grids: reflow on phone/tablet ===== */
+@media (max-width: 900px) {
+  .dash-zone-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .dash-preset-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .dash-zone-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-preset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

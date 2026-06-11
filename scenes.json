@@ -12,7 +12,7 @@
       "description": "Amber-toned wash across all stages",
       "stages": {
         "*": {
-          "media": 3,
+          "media": 5,
           "intensity": 0.85,
           "speed": 0.5,
           "color": { "red": 1.0, "green": 0.6, "blue": 0.2 }
@@ -21,10 +21,10 @@
     },
     "amber-white": {
       "name": "Amber White",
-      "description": "Warm amber-white wash on media slot 1",
+      "description": "Warm amber-white wash",
       "stages": {
         "*": {
-          "media": 1,
+          "media": 5,
           "intensity": 0.85,
           "speed": 0.5,
           "color": { "red": 1.0, "green": 0.953, "blue": 0.929 }
@@ -33,10 +33,10 @@
     },
     "green": {
       "name": "Green",
-      "description": "Green wash on media slot 2",
+      "description": "Green wash",
       "stages": {
         "*": {
-          "media": 2,
+          "media": 5,
           "intensity": 0.85,
           "speed": 0.5,
           "color": { "red": 0.0, "green": 1.0, "blue": 0.0 }
@@ -45,10 +45,10 @@
     },
     "red": {
       "name": "Red",
-      "description": "Red wash on media slot 4",
+      "description": "Red wash",
       "stages": {
         "*": {
-          "media": 4,
+          "media": 5,
           "intensity": 0.85,
           "speed": 0.5,
           "color": { "red": 1.0, "green": 0.0, "blue": 0.0 }
@@ -57,7 +57,7 @@
     },
     "blue": {
       "name": "Blue",
-      "description": "Blue wash on media slot 5",
+      "description": "Blue wash",
       "stages": {
         "*": {
           "media": 5,
