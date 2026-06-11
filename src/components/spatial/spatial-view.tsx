@@ -1,10 +1,12 @@
 import { useRef, useEffect, useCallback, useState } from 'preact/hooks';
-import { useAppState } from '../../state/context';
+import { useAppState, useAppDispatch } from '../../state/context';
 import { useIsMobile } from '../../hooks/use-media-query';
 import { buildThumbnailUrl } from '../../api/media';
+import { postStageIntensity } from '../../api/stages';
+import type { StageState } from '../../types/stage';
 import { ZoneSidebar } from './zone-sidebar';
-import { getScenes, getSceneStatus, activateScene, saveScene } from '../../api/scenes';
-import type { Scene, SceneStatus, StageConfig } from '../../api/scenes';
+import { getScenes, getSceneStatus, activateScene } from '../../api/scenes';
+import type { Scene, SceneStatus } from '../../api/scenes';
 import { MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS } from '../../api/mock';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -440,22 +442,9 @@ export function SpatialView() {
   );
 }
 
-function hexToRgb01(hex: string): { red: number; green: number; blue: number } {
-  const h = (hex || '#ffffff').replace('#', '');
-  return {
-    red: parseInt(h.substring(0, 2), 16) / 255,
-    green: parseInt(h.substring(2, 4), 16) / 255,
-    blue: parseInt(h.substring(4, 6), 16) / 255,
-  };
-}
-
 function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
-  const { stages } = useAppState();
   const [scenes, setScenes] = useState<Record<string, Scene>>(MOCK_ENABLED ? MOCK_SCENES : {});
   const [status, setStatus] = useState<SceneStatus | null>(MOCK_ENABLED ? MOCK_SCENE_STATUS : null);
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(() => {
     if (MOCK_ENABLED) return;
@@ -477,36 +466,6 @@ function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
     await activateScene(sceneId);
     refresh();
     window.dispatchEvent(new Event('dimly:force-sync'));
-  };
-
-  // Save the current live state of every zone as a new preset.
-  const handleCreate = async () => {
-    const trimmed = newName.trim();
-    if (!trimmed || saving) return;
-    setSaving(true);
-    const id = trimmed.toLowerCase().replace(/\s+/g, '-');
-    const stagesConfig: Record<string, StageConfig> = {};
-    for (const stage of stages) {
-      stagesConfig[stage.name] = {
-        media: Number(stage.mediaId) || 0,
-        intensity: stage.intensity / 100,
-        speed: stage.speed ?? 0.5,
-        color: hexToRgb01(stage.color),
-      };
-    }
-    try {
-      if (MOCK_ENABLED) {
-        setScenes(prev => ({ ...prev, [id]: { name: trimmed, description: 'Custom preset', stages: {} } }));
-      } else {
-        await saveScene({ id, scene: { name: trimmed, description: 'Custom preset', stages: stagesConfig } });
-      }
-    } catch (err) {
-      console.error('Failed to save preset:', err);
-    }
-    setSaving(false);
-    setCreating(false);
-    setNewName('');
-    refresh();
   };
 
   const entries = Object.entries(scenes);
@@ -551,77 +510,40 @@ function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
     );
   }
 
-  // ── Bottom section (mobile) — grid + "+ New", fills the shelf tab body ──
+  // ── Bottom section (mobile) — activate-only grid; new presets are created in Settings ──
   return (
     <div style={{
       flex: 1, minHeight: 0, overflowY: 'auto',
       padding: '14px 16px',
     }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-        {entries.map(([id, scene]) => {
-          const isActive = status?.activeScene === id;
-          return (
-            <button key={id} onClick={() => handleActivate(id)} style={{
-              all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-              textAlign: 'center',
-              padding: '12px 14px',
-              borderRadius: '8px',
-              background: isActive ? 'var(--app-accent)' : 'var(--app-surface2)',
-              border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border2)'}`,
-              color: isActive ? '#fff' : 'var(--app-text-secondary)',
-              fontSize: '13px', fontFamily: 'var(--font-sans)',
-              fontWeight: isActive ? 600 : 510,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              transition: 'all 0.15s',
-            }}>{scene.name}</button>
-          );
-        })}
-
-        {!creating && (
-          <button onClick={() => setCreating(true)} style={{
-            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-            textAlign: 'center',
-            padding: '12px 14px',
-            borderRadius: '8px',
-            background: 'transparent',
-            border: '1px dashed var(--app-border2)',
-            color: 'var(--app-accent)',
-            fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 510,
-            transition: 'all 0.15s',
-          }}>+ New</button>
-        )}
-      </div>
-
-      {creating && (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <input
-            type="text" autofocus placeholder="Preset name…"
-            value={newName}
-            onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
-            style={{
-              flex: 1, minWidth: 0,
-              background: 'var(--app-surface2)',
-              border: '1px solid var(--app-border2)',
-              borderRadius: '6px', padding: '10px 12px',
-              color: 'var(--app-text)', fontSize: '13px',
-              fontFamily: 'var(--font-sans)', outline: 'none',
-            }}
-          />
-          <button onClick={handleCreate} disabled={saving || !newName.trim()} style={{
-            all: 'unset', boxSizing: 'border-box',
-            cursor: saving || !newName.trim() ? 'default' : 'pointer',
-            padding: '10px 16px', borderRadius: '6px',
-            background: 'var(--app-accent)', color: '#fff',
-            fontSize: '13px', fontWeight: 600,
-            opacity: !newName.trim() ? 0.5 : 1,
-          }}>{saving ? 'Saving…' : 'Save'}</button>
-          <button onClick={() => { setCreating(false); setNewName(''); }} style={{
-            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-            padding: '10px 14px', borderRadius: '6px',
-            background: 'var(--app-surface2)', border: '1px solid var(--app-border2)',
-            color: 'var(--app-text-secondary)', fontSize: '13px',
-          }}>Cancel</button>
+      {entries.length === 0 ? (
+        <div style={{
+          padding: '24px 12px', textAlign: 'center',
+          color: 'var(--app-muted)', fontFamily: 'var(--font-sans)', fontSize: '12px',
+          lineHeight: 1.5,
+        }}>
+          No presets yet.<br />Create one in Settings.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {entries.map(([id, scene]) => {
+            const isActive = status?.activeScene === id;
+            return (
+              <button key={id} onClick={() => handleActivate(id)} style={{
+                all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+                textAlign: 'center',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                background: isActive ? 'var(--app-accent)' : 'var(--app-surface2)',
+                border: `1px solid ${isActive ? 'var(--app-accent)' : 'var(--app-border2)'}`,
+                color: isActive ? '#fff' : 'var(--app-text-secondary)',
+                fontSize: '13px', fontFamily: 'var(--font-sans)',
+                fontWeight: isActive ? 600 : 510,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                transition: 'all 0.15s',
+              }}>{scene.name}</button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -685,7 +607,7 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
 }
 
 function AllZonesStrip({ onSelect }: { onSelect: (i: number) => void }) {
-  const { stages, masterLevel, blackout } = useAppState();
+  const { stages } = useAppState();
 
   if (stages.length === 0) {
     return (
@@ -705,39 +627,125 @@ function AllZonesStrip({ onSelect }: { onSelect: (i: number) => void }) {
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px',
       alignContent: 'start',
     }}>
-      {stages.map((stage, i) => {
-        const level = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
-        const lit = level > 0;
-        return (
-          <button key={stage.id} onClick={() => onSelect(i)} style={{
-            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '10px 12px', borderRadius: '8px',
-            background: 'var(--app-surface2)',
-            border: '1px solid var(--app-border2)',
-            transition: 'all 0.15s',
-          }}>
-            <div style={{
-              width: '14px', height: '14px', borderRadius: '4px',
-              background: stage.color, flexShrink: 0,
-              opacity: lit ? 1 : 0.3,
-              boxShadow: lit ? `0 0 8px ${stage.color}` : 'none',
-            }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
-                color: 'var(--app-text)',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{stage.name}</div>
-            </div>
-            <div style={{
-              fontSize: '11px', fontFamily: 'var(--font-mono)',
-              color: lit ? 'var(--app-text-secondary)' : 'var(--app-muted)',
-              flexShrink: 0,
-            }}>{level}%</div>
-          </button>
-        );
-      })}
+      {stages.map((stage, i) => (
+        <ZoneSliderCard key={stage.id} stage={stage} index={i} onOpen={() => onSelect(i)} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A zone row that doubles as a horizontal intensity slider: drag/tap anywhere on
+ * the card body to set intensity, or tap the icon button to open the full zone
+ * controls (color / media / fader).
+ */
+function ZoneSliderCard({ stage, index, onOpen }: {
+  stage: StageState;
+  index: number;
+  onOpen: () => void;
+}) {
+  const dispatch = useAppDispatch();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const lit = stage.intensity > 0;
+
+  const setFromClientX = (clientX: number): number => {
+    const el = cardRef.current;
+    if (!el) return stage.intensity;
+    const rect = el.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, Math.round(((clientX - rect.left) / rect.width) * 100)));
+    dispatch({ type: 'SET_STAGE_INTENSITY', index, value: pct });
+    return pct;
+  };
+
+  const onPointerDown = (e: PointerEvent) => {
+    draggingRef.current = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setFromClientX(e.clientX);
+  };
+  const onPointerMove = (e: PointerEvent) => {
+    if (!draggingRef.current) return;
+    setFromClientX(e.clientX);
+  };
+  const onPointerUp = (e: PointerEvent) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    const pct = setFromClientX(e.clientX);
+    postStageIntensity(stage.id, pct / 100).catch(console.error);
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      style={{
+        position: 'relative', boxSizing: 'border-box', cursor: 'ew-resize',
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '16px 12px', borderRadius: '8px',
+        background: 'var(--app-surface2)',
+        border: '1px solid var(--app-border2)',
+        overflow: 'hidden', touchAction: 'none', userSelect: 'none',
+      }}
+    >
+      {/* Intensity fill */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: `${stage.intensity}%`,
+        background: stage.color,
+        opacity: lit ? 0.22 : 0.08,
+        transition: draggingRef.current ? 'none' : 'width 0.12s',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Color chip */}
+      <div style={{
+        position: 'relative',
+        width: '14px', height: '14px', borderRadius: '4px',
+        background: stage.color, flexShrink: 0,
+        opacity: lit ? 1 : 0.3,
+        boxShadow: lit ? `0 0 8px ${stage.color}` : 'none',
+      }} />
+
+      {/* Name */}
+      <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: '12px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+          color: 'var(--app-text)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{stage.name}</div>
+      </div>
+
+      {/* Percentage */}
+      <div style={{
+        position: 'relative',
+        fontSize: '11px', fontFamily: 'var(--font-mono)',
+        color: lit ? 'var(--app-text-secondary)' : 'var(--app-muted)',
+        flexShrink: 0,
+      }}>{stage.intensity}%</div>
+
+      {/* Open-controls icon button */}
+      <button
+        aria-label={`Open ${stage.name} controls`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        style={{
+          all: 'unset', cursor: 'pointer', position: 'relative',
+          flexShrink: 0, width: '26px', height: '26px', borderRadius: '6px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--app-muted)',
+          background: 'var(--app-surface3)', border: '1px solid var(--app-border2)',
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
+          <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+          <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
+        </svg>
+      </button>
     </div>
   );
 }

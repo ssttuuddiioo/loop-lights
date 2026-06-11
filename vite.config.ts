@@ -3,7 +3,9 @@ import preact from '@preact/preset-vite'
 import crypto from 'crypto'
 
 const PASSWORD = process.env.STAGE_PASSWORD || 'warhorse';
-const COOKIE_SECRET = crypto.randomBytes(32).toString('hex');
+// Shared with serve.cjs when COOKIE_SECRET is set, so the main-auth cookie minted
+// by the dev login validates against the proxied backend (admin-gated endpoints).
+const COOKIE_SECRET = process.env.COOKIE_SECRET || crypto.randomBytes(32).toString('hex');
 const COOKIE_NAME = 'stage-auth';
 
 function makeToken() {
@@ -63,8 +65,50 @@ const LOGIN_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+// Dev-server password gate — mirrors serve.cjs so the dev login mints a
+// stage-auth cookie the proxied backend accepts (requires shared COOKIE_SECRET).
+function devAuthGate() {
+  return {
+    name: 'dev-auth-gate',
+    configureServer(server: any) {
+      server.middlewares.use('/auth/login', (req: any, res: any, next: any) => {
+        if (req.method !== 'POST') return next();
+        let body = '';
+        req.on('data', (chunk: string) => { body += chunk; });
+        req.on('end', () => {
+          const params = new URLSearchParams(body);
+          const pw = params.get('password');
+          if (pw === PASSWORD) {
+            res.writeHead(302, {
+              'Set-Cookie': `${COOKIE_NAME}=${makeToken()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`,
+              'Location': '/',
+            });
+            res.end();
+          } else {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(LOGIN_HTML.replace('</form>', '<p class="error">Incorrect password</p></form>'));
+          }
+        });
+      });
+
+      server.middlewares.use((req: any, res: any, next: any) => {
+        // Skip auth for login route, HMR, and Vite internals.
+        if (req.url?.startsWith('/auth/') || req.url?.startsWith('/@') || req.url?.startsWith('/node_modules')) {
+          return next();
+        }
+        const cookies = parseCookies(req.headers.cookie);
+        if (cookies[COOKIE_NAME] === makeToken()) {
+          return next();
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(LOGIN_HTML);
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [preact(), devAuthGate()],
   server: {
     port: 4200,
     strictPort: true,
@@ -85,45 +129,13 @@ export default defineConfig({
         target: process.env.VITE_SERVE_URL || 'http://localhost:4201',
         changeOrigin: true,
       },
+      '/api/admin': {
+        target: process.env.VITE_SERVE_URL || 'http://localhost:4201',
+        changeOrigin: true,
+      },
     },
   },
   build: {
     outDir: 'dist',
-  },
-  // @ts-ignore — Vite plugin API
-  configureServer(server: any) {
-    server.middlewares.use('/auth/login', (req: any, res: any) => {
-      if (req.method === 'POST') {
-        let body = '';
-        req.on('data', (chunk: string) => { body += chunk; });
-        req.on('end', () => {
-          const params = new URLSearchParams(body);
-          const pw = params.get('password');
-          if (pw === PASSWORD) {
-            res.writeHead(302, {
-              'Set-Cookie': `${COOKIE_NAME}=${makeToken()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`,
-              'Location': '/',
-            });
-            res.end();
-          } else {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(LOGIN_HTML.replace('</form>', '<p class="error">Incorrect password</p></form>'));
-          }
-        });
-      }
-    });
-
-    server.middlewares.use((req: any, res: any, next: any) => {
-      // Skip auth for login route and HMR
-      if (req.url?.startsWith('/auth/') || req.url?.startsWith('/@') || req.url?.startsWith('/node_modules')) {
-        return next();
-      }
-      const cookies = parseCookies(req.headers.cookie);
-      if (cookies[COOKIE_NAME] === makeToken()) {
-        return next();
-      }
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(LOGIN_HTML);
-    });
   },
 })

@@ -28,8 +28,9 @@ const PASSWORD = process.env.STAGE_PASSWORD || 'warhorse';
 
 const DIST_DIR = path.join(__dirname, 'dist');
 
-// Generate a random secret for signing cookies each server start
-const COOKIE_SECRET = crypto.randomBytes(32).toString('hex');
+// Random secret each start, unless COOKIE_SECRET is set (share it with the Vite
+// dev server so its main-auth cookie validates against this backend's proxied API).
+const COOKIE_SECRET = process.env.COOKIE_SECRET || crypto.randomBytes(32).toString('hex');
 const COOKIE_NAME = 'stage-auth';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 

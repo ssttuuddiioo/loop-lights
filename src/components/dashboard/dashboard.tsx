@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import { useAppState, useAppDispatch } from '../../state/context';
+import { useAppState } from '../../state/context';
 import { useIsMobile } from '../../hooks/use-media-query';
-import { postStageIntensity } from '../../api/stages';
+import { useTheme } from '../../hooks/use-theme';
 import {
   getScenes, getSceneStatus, activateScene, toggleTrigger,
   saveScene, deleteScene, updateTrigger,
@@ -11,143 +11,6 @@ import { clampHexSafe } from '../../lib/safe-color';
 import {
   MOCK_ENABLED, MOCK_SCENES, MOCK_SCENE_STATUS, MOCK_TRIGGERS,
 } from '../../api/mock';
-
-// --- Stage Card ---
-
-function DashboardCard({ index }: { index: number }) {
-  const { stages, masterLevel, blackout } = useAppState();
-  const dispatch = useAppDispatch();
-  const stage = stages[index];
-  if (!stage) return null;
-
-  const effective = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
-  const isOn = stage.intensity > 0;
-
-  const toggleOnOff = () => {
-    const newIntensity = isOn ? 0 : (stage.baseIntensity > 0 ? stage.baseIntensity : 100);
-    dispatch({ type: 'SET_STAGE_INTENSITY', index, value: newIntensity });
-    postStageIntensity(stage.id, newIntensity / 100).catch(console.error);
-  };
-
-  return (
-    <div style={{
-      background: 'var(--app-surface)',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: '8px',
-      padding: '16px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Header: dot + name + toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '6px', height: '6px', borderRadius: '50%',
-            background: stage.color, opacity: isOn ? 1 : 0.3,
-            flexShrink: 0,
-          }} />
-          <div>
-            <div style={{
-              fontSize: '13px', fontWeight: 510, fontFamily: 'var(--font-sans)',
-              letterSpacing: '-0.01em', color: 'var(--app-text)',
-            }}>
-              {stage.name}
-            </div>
-            <div style={{
-              fontSize: '10px', color: 'var(--app-text-quaternary)',
-              fontFamily: 'var(--font-mono)', marginTop: '1px',
-            }}>
-              Zone {String(index + 1).padStart(2, '0')}
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={toggleOnOff}
-          style={{
-            all: 'unset',
-            cursor: 'pointer',
-            width: '36px',
-            height: '20px',
-            borderRadius: '10px',
-            background: isOn ? 'var(--app-accent)' : 'var(--app-surface3)',
-            border: `1px solid ${isOn ? 'var(--app-accent)' : 'var(--app-border2)'}`,
-            position: 'relative',
-            transition: 'background 0.15s, border-color 0.15s',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{
-            width: '14px',
-            height: '14px',
-            borderRadius: '50%',
-            background: isOn ? '#fff' : 'var(--app-muted)',
-            position: 'absolute',
-            top: '2px',
-            left: isOn ? '19px' : '2px',
-            transition: 'left 0.15s, background 0.15s',
-          }} />
-        </button>
-      </div>
-
-      {/* Intensity slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <input
-          type="range" min={0} max={100} value={stage.intensity}
-          onInput={(e) => {
-            const val = parseInt((e.target as HTMLInputElement).value);
-            dispatch({ type: 'SET_STAGE_INTENSITY', index, value: val });
-          }}
-          onChange={(e) => {
-            const val = parseInt((e.target as HTMLInputElement).value);
-            postStageIntensity(stage.id, val / 100).catch(console.error);
-          }}
-          style={{ flex: 1, height: '4px', accentColor: stage.color, cursor: 'pointer' }}
-        />
-        <span style={{
-          fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 510,
-          color: effective > 0 ? 'var(--app-accent)' : 'var(--app-muted)',
-          minWidth: '32px', textAlign: 'right' as const,
-        }}>
-          {effective}%
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// --- Stage Grid ---
-
-function StageStatusGrid() {
-  const { stages } = useAppState();
-
-  const facadeIndex = stages.findIndex(s => s.name.toUpperCase() === 'FACADE');
-  const topStages = stages.filter((_, i) => i !== facadeIndex);
-
-  return (
-    <div>
-      <div style={{
-        fontSize: '13px', fontWeight: 590, fontFamily: 'var(--font-sans)',
-        letterSpacing: '-0.01em', color: 'var(--app-text)',
-        marginBottom: '12px',
-      }}>
-        Zone Control
-      </div>
-      <div class="dash-zone-grid" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-        gap: '10px',
-      }}>
-        {topStages.map((s) => {
-          const originalIndex = stages.findIndex(st => st.id === s.id);
-          return <DashboardCard key={s.id} index={originalIndex} />;
-        })}
-        {facadeIndex >= 0 && (
-          <DashboardCard index={facadeIndex} />
-        )}
-      </div>
-    </div>
-  );
-}
 
 // --- Hex/RGB helpers ---
 
@@ -829,6 +692,75 @@ function ScheduleSection() {
   );
 }
 
+// --- Appearance Section ---
+
+function AppearanceSection() {
+  const { theme, toggle } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <div style={{
+      background: 'var(--app-surface)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '8px',
+      padding: '16px 20px',
+    }}>
+      <div style={{
+        fontSize: '13px', fontWeight: 590, fontFamily: 'var(--font-sans)',
+        letterSpacing: '-0.01em', color: 'var(--app-text)',
+        marginBottom: '12px',
+      }}>
+        Appearance
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ color: 'var(--app-text-secondary)', display: 'flex' }}>
+            {isDark ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
+          </span>
+          <span style={{
+            fontSize: '13px', fontFamily: 'var(--font-sans)', fontWeight: 510,
+            color: 'var(--app-text)',
+          }}>
+            Night mode
+          </span>
+        </div>
+        <button
+          onClick={toggle}
+          aria-label="Toggle night mode"
+          style={{
+            all: 'unset', cursor: 'pointer',
+            width: '36px', height: '20px', borderRadius: '10px',
+            background: isDark ? 'var(--app-accent)' : 'var(--app-surface3)',
+            border: `1px solid ${isDark ? 'var(--app-accent)' : 'var(--app-border2)'}`,
+            position: 'relative', transition: 'background 0.15s, border-color 0.15s',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{
+            width: '14px', height: '14px', borderRadius: '50%',
+            background: isDark ? '#fff' : 'var(--app-muted)',
+            position: 'absolute', top: '2px',
+            left: isDark ? '19px' : '2px',
+            transition: 'left 0.15s, background 0.15s',
+          }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // --- Dashboard Page ---
 
 export function Dashboard() {
@@ -842,9 +774,9 @@ export function Dashboard() {
       flexDirection: 'column',
       gap: '20px',
     }}>
-      <StageStatusGrid />
       <PresetsSection />
       <ScheduleSection />
+      <AppearanceSection />
     </div>
   );
 }

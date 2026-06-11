@@ -12,15 +12,36 @@ function getInitialTheme(): Theme {
   return 'dark';
 }
 
+// Shared module-level store so every useTheme() consumer stays in sync and the
+// theme is applied at load — regardless of which page mounts the toggle.
+let current: Theme = getInitialTheme();
+const listeners = new Set<(t: Theme) => void>();
+
+function apply(t: Theme) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem(STORAGE_KEY, t); } catch {}
+}
+
+apply(current);
+
+export function setTheme(t: Theme) {
+  if (t === current) return;
+  current = t;
+  apply(t);
+  listeners.forEach(l => l(t));
+}
+
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [theme, setThemeState] = useState<Theme>(current);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
+    const listener = (t: Theme) => setThemeState(t);
+    listeners.add(listener);
+    setThemeState(current);
+    return () => { listeners.delete(listener); };
+  }, []);
 
-  const toggle = () => setThemeState(t => t === 'dark' ? 'light' : 'dark');
+  const toggle = () => setTheme(current === 'dark' ? 'light' : 'dark');
 
   return { theme, toggle } as const;
 }
