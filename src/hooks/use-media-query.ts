@@ -21,3 +21,8 @@ export function useMediaQuery(query: string): boolean {
 export function useIsMobile(): boolean {
   return useMediaQuery('(max-width: 900px)');
 }
+
+/** True on wide desktop monitors (≥1280px) — room for the bottom dock. */
+export function useIsWide(): boolean {
+  return useMediaQuery('(min-width: 1280px)');
+}

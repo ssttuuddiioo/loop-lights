@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'preact/hooks';
 import { useAppState, useAppDispatch } from '../../state/context';
-import { useIsMobile } from '../../hooks/use-media-query';
+import { useIsMobile, useIsWide } from '../../hooks/use-media-query';
 import { buildThumbnailUrl } from '../../api/media';
 import { postStageIntensity } from '../../api/stages';
 import type { StageState } from '../../types/stage';
@@ -66,6 +66,7 @@ export function SpatialView() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'zones' | 'presets'>('zones');
   const isMobile = useIsMobile();
+  const isWide = useIsWide();
 
   // @ts-ignore
   const sceneRef = useRef<any>(null);
@@ -455,9 +456,12 @@ export function SpatialView() {
 
         <ZoneLabels />
 
-        {/* Desktop: presets float over the bottom-center of the scene */}
-        {!isMobile && <PresetDock variant="floating" />}
+        {/* Desktop (non-wide): presets float over the bottom-center of the scene */}
+        {!isMobile && !isWide && <PresetDock variant="floating" />}
       </div>
+
+      {/* Wide desktop: persistent bottom dock — presets left, zone strip right */}
+      {!isMobile && isWide && <WideDock onSelectZone={setSelectedZone} />}
 
       {/* Mobile: tabbed bottom shelf (Zones / Presets) fills the lower half */}
       {isMobile && (
@@ -544,7 +548,8 @@ function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
     );
   }
 
-  // ── Bottom section (mobile) — activate-only grid; new presets are created in Settings ──
+  // ── Bottom section (mobile + wide dock) — activate-only grid; new presets are created in Settings ──
+  const hasActive = !!status?.activeScene && entries.some(([id]) => id === status!.activeScene);
   return (
     <div style={{
       flex: 1, minHeight: 0, overflowY: 'auto',
@@ -559,6 +564,16 @@ function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
           No presets yet.<br />Create one in Settings.
         </div>
       ) : (
+        <>
+        {!hasActive && (
+          <div style={{
+            marginBottom: '10px',
+            color: 'var(--app-muted)', fontFamily: 'var(--font-mono)',
+            fontSize: '11px', letterSpacing: '0.04em',
+          }}>
+            No preset selected
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
           {entries.map(([id, scene]) => {
             const isActive = status?.activeScene === id;
@@ -579,7 +594,51 @@ function PresetDock({ variant }: { variant: 'floating' | 'section' }) {
             );
           })}
         </div>
+        </>
       )}
+    </div>
+  );
+}
+
+// ── Wide desktop bottom dock: presets (left) + zone strip (right) ─────
+function WideDock({ onSelectZone }: { onSelectZone: (i: number) => void }) {
+  return (
+    <div style={{
+      flexShrink: 0, height: '320px',
+      display: 'flex',
+      borderTop: '1px solid var(--app-border2)',
+      background: 'var(--app-surface)',
+    }}>
+      {/* Presets column */}
+      <div style={{
+        width: '280px', flexShrink: 0,
+        borderRight: '1px solid var(--app-border)',
+        display: 'flex', flexDirection: 'column', minHeight: 0,
+      }}>
+        <DockHeader label="Presets" />
+        <PresetDock variant="section" />
+      </div>
+
+      {/* Zone strip */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <DockHeader label="Zones" />
+        <AllZonesStrip onSelect={onSelectZone} />
+      </div>
+    </div>
+  );
+}
+
+function DockHeader({ label }: { label: string }) {
+  return (
+    <div style={{
+      padding: '10px 16px',
+      borderBottom: '1px solid var(--app-border)',
+      flexShrink: 0,
+      fontFamily: 'var(--font-mono)', fontSize: '11px',
+      letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: 'var(--app-muted)',
+    }}>
+      {label}
     </div>
   );
 }
