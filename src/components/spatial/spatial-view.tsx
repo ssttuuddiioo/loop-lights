@@ -16,6 +16,36 @@ const BG_COLOR = 0x1a1a1e;
 const HOVER_BOOST = 0.3;
 const FLOOR_COLOR = 0x4a4a52;
 
+// venue.glb names its objects zone1..zoneN, but those numbers do NOT line up
+// with the order ELM returns stages. Map each GLB zone (by index, zone1 = 0)
+// to the stage it physically represents, matched by stage name.
+const ZONE_STAGE_NAMES = [
+  'FACADE',     // zone1
+  'COLUMN-R',   // zone2
+  'COLUMN-L',   // zone3
+  'BAR',        // zone4
+  'PROJECTION', // zone5
+  'SPIRAL',     // zone6
+  'RING',       // zone7
+];
+
+function normalizeName(n: string): string {
+  return n.trim().toUpperCase();
+}
+
+// Resolve a GLB zone index to its position in the ELM stages array (or -1).
+function stageIndexForZone(stages: StageState[], zoneIndex: number): number {
+  const target = ZONE_STAGE_NAMES[zoneIndex];
+  if (!target) return -1;
+  const t = normalizeName(target);
+  return stages.findIndex((st) => normalizeName(st.name) === t);
+}
+
+function stageForZone(stages: StageState[], zoneIndex: number): StageState | undefined {
+  const i = stageIndexForZone(stages, zoneIndex);
+  return i >= 0 ? stages[i] : undefined;
+}
+
 
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
@@ -258,7 +288,7 @@ export function SpatialView() {
 
       const s = stateRef.current;
       for (let z = 0; z < ctx.zoneMeshes.length; z++) {
-        const stage = s.stages[z];
+        const stage = stageForZone(s.stages, z);
         if (!stage) continue;
 
         const intensity = s.blackout ? 0 : (stage.intensity * s.masterLevel / 10000);
@@ -348,7 +378,11 @@ export function SpatialView() {
       raycaster.setFromCamera(tapPointer, camera);
       const hits = raycaster.intersectObjects(ctx.zoneHitBoxes);
       if (hits.length > 0) {
-        setSelectedZone(hits[0].object.userData.zoneIndex as number);
+        // userData.zoneIndex is the GLB zone index; selectedZone is a stages[]
+        // index everywhere downstream, so resolve it here at the single click site.
+        const zoneIndex = hits[0].object.userData.zoneIndex as number;
+        const stageIndex = stageIndexForZone(stateRef.current.stages, zoneIndex);
+        setSelectedZone(stageIndex >= 0 ? stageIndex : null);
         setActiveTab('zones'); // surface the controls in the bottom shelf
       } else {
         setSelectedZone(null);
