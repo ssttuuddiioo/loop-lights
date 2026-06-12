@@ -53,10 +53,13 @@ export function ControlSurface() {
     <div style={{
       flexShrink: 0,
       display: 'flex',
+      boxSizing: 'border-box',
       borderTop: isMobile ? 'none' : '1px solid var(--app-border2)',
       borderBottom: isMobile ? '1px solid var(--app-border2)' : 'none',
       background: 'var(--app-surface)',
-      ...(isMobile ? {} : { height: '320px' }),
+      ...(isMobile
+        ? { paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }
+        : { height: '312px', paddingBottom: 'calc(18px + env(safe-area-inset-bottom, 0px))' }),
     }}>
       {isMobile ? (
         /* Phone: 3-wide grid so every fader is visible — no hidden strips */
@@ -470,7 +473,6 @@ function ChannelStrip({ stage, stageIndex, selected, compact, onSelect }: {
 }) {
   const { masterLevel, blackout } = useAppState();
   const dispatch = useAppDispatch();
-  const { mediaSlots } = useAppState();
 
   const effectiveIntensity = blackout ? 0 : Math.round(stage.intensity * masterLevel / 100);
   const isOn = stage.intensity > 0;
@@ -482,53 +484,22 @@ function ChannelStrip({ stage, stageIndex, selected, compact, onSelect }: {
     postStageIntensity(stage.id, newVal / 100).catch(console.error);
   }, [dispatch, stageIndex, isOn, stage.baseIntensity, stage.id]);
 
-  const currentSlot = mediaSlots.find(s => String(s.id) === String(stage.mediaId));
-  const thumbUrl = currentSlot ? buildThumbnailUrl(currentSlot.id, currentSlot.thumbnailETag) : '';
-
   return (
     <div
       onClick={onSelect}
       style={{
         // Desktop: flexible strip in a row. Mobile: sized by its grid cell.
-        ...(compact ? { minHeight: 0 } : { flex: '1 0 0', minWidth: '80px' }),
-        display: 'flex', flexDirection: 'column', gap: '6px',
-        padding: '7px',
-        borderRadius: '8px', boxSizing: 'border-box',
+        ...(compact ? { minHeight: 0 } : { flex: '1 0 0', minWidth: '84px' }),
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        padding: '10px',
+        borderRadius: '10px', boxSizing: 'border-box',
         background: selected ? 'var(--app-surface2)' : 'transparent',
         border: `1px solid ${selected ? 'var(--app-accent)' : 'var(--app-border)'}`,
         cursor: 'pointer',
+        overflow: 'hidden', // keep the fader fill inside the rounded bounds
         transition: 'border-color 0.15s, background 0.15s',
       }}
     >
-      {/* Media thumb */}
-      {!compact && (
-        <div style={{
-          height: '34px', borderRadius: '5px', flexShrink: 0,
-          border: '1px solid var(--app-border)',
-          background: 'var(--app-surface3)',
-          backgroundImage: thumbUrl ? `url('${thumbUrl}')` : 'none',
-          backgroundSize: 'cover', backgroundPosition: 'center',
-        }} />
-      )}
-
-      {/* Fader */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        <VerticalFader
-          stage={stage}
-          stageIndex={stageIndex}
-          effectiveIntensity={effectiveIntensity}
-          color={stage.color}
-        />
-      </div>
-
-      {/* Hue bar */}
-      <div style={{
-        height: '6px', borderRadius: '3px', flexShrink: 0,
-        background: stage.color,
-        opacity: isOn ? 1 : 0.35,
-        boxShadow: isOn ? `0 0 6px ${stage.color}` : 'none',
-      }} />
-
       {/* Name */}
       <div style={{
         textAlign: 'center', flexShrink: 0,
@@ -544,17 +515,27 @@ function ChannelStrip({ stage, stageIndex, selected, compact, onSelect }: {
         onClick={toggleOnOff}
         style={{
           all: 'unset', cursor: 'pointer', flexShrink: 0,
-          height: '22px', borderRadius: '6px', boxSizing: 'border-box',
+          height: '30px', borderRadius: '7px', boxSizing: 'border-box',
           textAlign: 'center',
           background: isOn ? stage.color : 'var(--app-surface3)',
           border: `1px solid ${isOn ? stage.color : 'var(--app-border2)'}`,
-          fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700,
-          letterSpacing: '0.12em', lineHeight: '20px',
+          fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700,
+          letterSpacing: '0.14em', lineHeight: '28px',
           color: isOn ? '#fff' : 'var(--app-muted)',
           textShadow: isOn ? '0 1px 2px rgba(0,0,0,0.45)' : 'none',
           transition: 'all 0.15s',
         }}
       >{isOn ? 'ON' : 'OFF'}</button>
+
+      {/* Fader — flex fills remaining height, clipped to its own rounded track */}
+      <div style={{ flex: 1, minHeight: '60px', display: 'flex' }}>
+        <VerticalFader
+          stage={stage}
+          stageIndex={stageIndex}
+          effectiveIntensity={effectiveIntensity}
+          color={stage.color}
+        />
+      </div>
     </div>
   );
 }

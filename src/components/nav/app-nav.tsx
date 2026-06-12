@@ -138,6 +138,20 @@ export function AppNav() {
           </Link>
         );
       })}
+
+      {/* Footer credit — pinned to the bottom-left */}
+      <div style={{
+        marginTop: 'auto',
+        padding: '16px 6px calc(16px + env(safe-area-inset-bottom, 0px))',
+        textAlign: 'center',
+        fontFamily: 'var(--font-sans)',
+        fontSize: '9px',
+        lineHeight: 1.4,
+        letterSpacing: '0.02em',
+        color: 'var(--app-text-quaternary)',
+      }}>
+        built by<br />studio studio
+      </div>
     </nav>
   );
 }
