@@ -157,7 +157,7 @@ function MediaTab() {
 
 // ─── Presets tab ────────────────────────────────────────────────────
 
-function PresetsTab() {
+export function PresetsTab() {
   const { stages, mediaSlots } = useAppState();
   const [scenes, setScenes] = useState<Record<string, Scene>>(MOCK_ENABLED ? MOCK_SCENES : {});
   const [status, setStatus] = useState<SceneStatus | null>(MOCK_ENABLED ? MOCK_SCENE_STATUS : null);
@@ -528,7 +528,7 @@ function TargetChip({ label, active, accent, color, onClick }: {
   );
 }
 
-function MediaTile({ name, thumbUrl, selected, onClick }: {
+export function MediaTile({ name, thumbUrl, selected, onClick }: {
   name: string; thumbUrl: string; selected: boolean; onClick: () => void;
 }) {
   return (
